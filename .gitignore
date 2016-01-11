@@ -1,0 +1,9 @@
+*.pyc
+*.pyd
+*.so
+
+*.swp
+*~
+
+.DS_Store
+desktop.ini
