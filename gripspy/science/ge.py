@@ -82,7 +82,7 @@ class GeData(object):
         lv = stripmap[self.s_lv]
         hv = stripmap[self.s_hv]
         good = np.logical_and(lv < 900, hv < 900)
-        hitmap = sps.coo_matrix((good, (hv, lv)), dtype=int).toarray()
+        return sps.coo_matrix((good, (hv, lv)), dtype=int).toarray()
 
     def plot_depth(self):
         binning = (np.arange(-58, 60, 2) - 1) * 10
