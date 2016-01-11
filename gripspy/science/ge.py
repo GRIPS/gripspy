@@ -12,12 +12,19 @@ from ..packet import parser_generator
 __all__ = ['GeData']
 
 
+DIR = os.path.join(__file__, "..")
+
+
+stripmap = np.array([np.loadtxt(os.path.join(DIR, "asicmap", "asicmap{0}.txt".format(asic)), dtype=np.uint16)[:, 1]
+                     for asic in range(8)]).flatten()
+
+
 class GeData(object):
     def __init__(self, filename, detector):
         self.filename = filename
         self.detector = detector
 
-        result = process(filename, detector, os.path.join(__file__, "..", "cms", "cc{0}_1000".format(detector)))
+        result = process(filename, detector, os.path.join(DIR, "cms", "cc{0}_1000".format(detector)))
         self.adc = result[0]
         self.cms = result[1]
         self.delta_time = result[2]
@@ -70,6 +77,13 @@ class GeData(object):
     def s_hv(self):
         return self.single_triggers_hv
 
+    @property
+    def hitmap(self):
+        lv = stripmap[self.s_lv]
+        hv = stripmap[self.s_hv]
+        good = np.logical_and(lv < 900, hv < 900)
+        hitmap = sps.coo_matrix((good, (hv, lv)), dtype=int).toarray()
+
     def plot_depth(self):
         binning = (np.arange(-58, 60, 2) - 1) * 10
         plt.hist((self.d[self.s, self.s_hv].A1 - self.d[self.s, self.s_lv].A1) * 10.,
@@ -78,10 +92,26 @@ class GeData(object):
         plt.title("HV time minus LV time (i.e., left is HV side)")
 
     def plot_hitmap(self):
-        pass
+        plt.imshow(self.hitmap, origin='lower', cmap='gray');
+        plt.title("CC{0}".format(self.detector));
+        plt.xlabel("LV (ASICs 1/3 to 0/2)");
+        plt.ylabel("HV (ASICs 4/6 to 5/7)");
+        plt.colorbar();
 
     def plot_spatial_spectrum(self):
-        pass
+        fig = plt.gcf()
+
+        binning = np.arange(-128, 2048, 8)
+
+        fig.add_subplot(211)
+
+        plt.hist2d(self.s_lv, self.c[self.s, self.s_lv].A1, bins=[np.arange(0, 256, 1), binning], cmap='gray');
+        plt.title("CC{0} LV side".format(self.detector));
+
+        fig.add_subplot(212)
+
+        plt.hist2d(self.s_hv, self.c[self.s, self.s_hv].A1, bins=[np.arange(256, 512, 1), binning], cmap='gray');
+        plt.title("CC{0} HV side".format(self.detector));
 
     def plot_spectrum(self, asiccha):
         if type(asiccha) == tuple:
@@ -93,7 +123,7 @@ class GeData(object):
 
         fig.add_subplot(211)
 
-        binning = np.arange(0, 3072, 8)
+        binning = np.arange(0, 3584, 8)
 
         plt.hist(self.a[:, index][self.t[:, index].nonzero()].A1, bins=binning, histtype='step', color='r', label='All triggers')
         plt.hist(self.a[self.s, index][self.t[self.s, index].nonzero()].A1, bins=binning, histtype='step', color='k', label='Single triggers')
@@ -103,7 +133,7 @@ class GeData(object):
 
         fig.add_subplot(212)
 
-        binning = np.arange(-128, 1536, 8)
+        binning = np.arange(-128, 2048, 8)
 
         plt.hist(self.c[:, index][self.t[:, index].nonzero()].A1, bins=binning, histtype='step', color='r', label='All triggers')
         plt.hist(self.c[self.s, index][self.t[self.s, index].nonzero()].A1, bins=binning, histtype='step', color='k', label='Single triggers')
