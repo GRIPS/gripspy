@@ -105,79 +105,52 @@ class GeData(object):
         good = np.logical_and(lv < 900, hv < 900)
         return sps.coo_matrix((good, (hv, lv)), dtype=int).toarray()
 
-    def plot_depth(self):
-        binning = (np.arange(-58, 60, 2) - 1) * 10
+    def plot_depth(self, binning=np.arange(-595, 596, 10)):
         plt.hist((self.d[self.s, self.s_hv].A1 - self.d[self.s, self.s_lv].A1) * 10.,
-                 bins=binning, histtype='step', label='CC{0}'.format(self.detector));
+                 bins=binning, histtype='step', label='CC{0}'.format(self.detector))
         plt.xlabel("Nanoseconds")
-        plt.title("HV time minus LV time (i.e., left is HV side)")
+        plt.title("CC{0} HV time minus LV time (i.e., left is HV side)".format(self.detector))
 
     def plot_hitmap(self):
-        plt.imshow(self.hitmap, origin='lower', cmap='gray');
-        plt.title("CC{0}".format(self.detector));
-        plt.xlabel("LV (ASICs 1/3 to 0/2)");
-        plt.ylabel("HV (ASICs 4/6 to 5/7)");
-        plt.colorbar();
+        plt.imshow(self.hitmap, origin='lower', cmap='gray')
+        plt.title("CC{0}".format(self.detector))
+        plt.xlabel("LV (ASICs 1/3 to 0/2)")
+        plt.ylabel("HV (ASICs 4/6 to 5/7)")
+        plt.colorbar()
 
-    def plot_multiple_trigger_veto(self):
-        fig = plt.gcf()
-
-        fig.add_subplot(211)
-
-        plt.hist(self.t[:, 0:256].sum(1).A1, bins=np.arange(0, 150), histtype='step', label='All')
-        plt.hist(self.t[:, 0:256].sum(1).A1[~self.vm], bins=np.arange(0, 150), histtype='step', label='Not vetoed')
-        plt.hist(np.logical_and(self.d[:, 0:256].toarray() <= 126, self.t[:, 0:256].toarray())[~self.vm, :].sum(1), bins=np.arange(0, 150), histtype='step', label='Not vetoed and delta <= 126')
+    def plot_multiple_trigger_veto(self, side):
+        side %= 2
+        plt.hist(self.t[:, side*256:(side+1)*256].sum(1).A1, bins=np.arange(0, 150), histtype='step', label='All')
+        plt.hist(self.t[:, side*256:(side+1)*256].sum(1).A1[~self.vm], bins=np.arange(0, 150), histtype='step', label='Not vetoed')
+        plt.hist(np.logical_and(self.d[:, side*256:(side+1)*256].toarray() <= 126, self.t[:, side*256:(side+1)*256].toarray())[~self.vm, :].sum(1), bins=np.arange(0, 150), histtype='step', label='Not vetoed and delta <= 126')
         plt.xlabel("Number of channels")
-        plt.title("CC{0} LV side".format(self.detector))
+        plt.title("CC{0} {1} side".format(self.detector, "LV" if side == 0 else "HV"))
         plt.legend()
         plt.semilogy()
 
-        fig.add_subplot(212)
+    def plot_spatial_spectrum(self, side):
+        s_side = self.s_lv if side == 0 else self.s_hv
+        plt.hist2d(s_side, self.c[self.s, s_side].A1, bins=[np.arange(side*256, (side+1)*256, 1), np.arange(-128, 2048, 8)], cmap='gray')
+        plt.title("CC{0} {1} side".format(self.detector, "LV" if side == 0 else "HV"))
 
-        plt.hist(self.t[:, 256:512].sum(1).A1, bins=np.arange(0, 150), histtype='step', label='All')
-        plt.hist(self.t[:, 256:512].sum(1).A1[~self.vm], bins=np.arange(0, 150), histtype='step', label='Not vetoed')
-        plt.hist(np.logical_and(self.d[:, 256:512].toarray() <= 126, self.t[:, 256:512].toarray())[~self.vm, :].sum(1), bins=np.arange(0, 150), histtype='step', label='Not vetoed and delta <= 126')
-        plt.xlabel("Number of channels")
-        plt.title("CC{0} HV side".format(self.detector))
-        plt.legend()
-        plt.semilogy()
-
-    def plot_spatial_spectrum(self):
-        fig = plt.gcf()
-
-        binning = np.arange(-128, 2048, 8)
-
-        fig.add_subplot(211)
-
-        plt.hist2d(self.s_lv, self.c[self.s, self.s_lv].A1, bins=[np.arange(0, 256, 1), binning], cmap='gray')
-        plt.title("CC{0} LV side".format(self.detector))
-
-        fig.add_subplot(212)
-
-        plt.hist2d(self.s_hv, self.c[self.s, self.s_hv].A1, bins=[np.arange(256, 512, 1), binning], cmap='gray')
-        plt.title("CC{0} HV side".format(self.detector))
-
-    def plot_spectrum(self, asiccha):
+    def plot_spectrum(self, asiccha, binning=np.arange(0, 3584, 8)):
         if type(asiccha) == tuple:
             index = asiccha[0] * 64 + asiccha[1]
         else:
             index = asiccha
 
-        fig = plt.gcf()
-
-        fig.add_subplot(211)
-
-        binning = np.arange(0, 3584, 8)
-
-        plt.hist(self.a[:, index][self.t[:, index].nonzero()].A1, bins=binning, histtype='step', color='r', label='All triggers')
+        val, _, _ = plt.hist(self.a[:, index][self.t[:, index].nonzero()].A1, bins=binning, histtype='step', color='r', label='All triggers')
         plt.hist(self.a[self.s, index][self.t[self.s, index].nonzero()].A1, bins=binning, histtype='step', color='k', label='Single triggers')
         plt.hist(self.a[:, index].toarray()[~self.t[:, index].toarray()], bins=binning, histtype='step', color='b', label='Untriggered')
         plt.legend()
         plt.title("Raw ADC spectra for CC{0}/A{1}-{2}".format(self.detector, *divmod(index, 64)))
+        plt.ylim(0, np.max(val))
 
-        fig.add_subplot(212)
-
-        binning = np.arange(-128, 2048, 8)
+    def plot_subtracted_spectrum(self, asiccha, binning=np.arange(-128, 2048, 8)):
+        if type(asiccha) == tuple:
+            index = asiccha[0] * 64 + asiccha[1]
+        else:
+            index = asiccha
 
         plt.hist(self.c[:, index][self.t[:, index].nonzero()].A1, bins=binning, histtype='step', color='r', label='All triggers')
         plt.hist(self.c[self.s, index][self.t[self.s, index].nonzero()].A1, bins=binning, histtype='step', color='k', label='Single triggers')
