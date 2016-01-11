@@ -6,7 +6,7 @@ import numpy as np
 import scipy.sparse as sps
 import matplotlib.pyplot as plt
 
-from ..packet import parser_generator
+from ..telemetry import parser_generator
 
 
 __all__ = ['GeData']
