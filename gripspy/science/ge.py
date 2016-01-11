@@ -31,6 +31,7 @@ class GeData(object):
         self.event_time = result[3]
         self.glitch = result[4]
         self.trigger = result[5]
+        self.veto = result[6]
 
         self.single_triggers = np.flatnonzero(np.logical_and(self.trigger[:, 0:256].sum(1) == 1,
                                                              self.trigger[:, 256:512].sum(1) == 1).A1)
@@ -66,6 +67,26 @@ class GeData(object):
         return self.trigger
 
     @property
+    def v(self):
+        return self.veto
+
+    @property
+    def vl(self):
+        return self.veto[:, 0]
+
+    @property
+    def vh(self):
+        return self.veto[:, 1]
+
+    @property
+    def vs(self):
+        return self.veto[:, 2]
+
+    @property
+    def vm(self):
+        return self.veto[:, 3]
+
+    @property
     def s(self):
         return self.single_triggers
 
@@ -98,6 +119,29 @@ class GeData(object):
         plt.ylabel("HV (ASICs 4/6 to 5/7)");
         plt.colorbar();
 
+    def plot_multiple_trigger_veto(self):
+        fig = plt.gcf()
+
+        fig.add_subplot(211)
+
+        plt.hist(self.t[:, 0:256].sum(1).A1, bins=np.arange(0, 150), histtype='step', label='All')
+        plt.hist(self.t[:, 0:256].sum(1).A1[~self.vm], bins=np.arange(0, 150), histtype='step', label='Not vetoed')
+        plt.hist(np.logical_and(self.d[:, 0:256].toarray() <= 126, self.t[:, 0:256].toarray())[~self.vm, :].sum(1), bins=np.arange(0, 150), histtype='step', label='Not vetoed and delta <= 126')
+        plt.xlabel("Number of channels")
+        plt.title("CC{0} LV side".format(self.detector))
+        plt.legend()
+        plt.semilogy()
+
+        fig.add_subplot(212)
+
+        plt.hist(self.t[:, 256:512].sum(1).A1, bins=np.arange(0, 150), histtype='step', label='All')
+        plt.hist(self.t[:, 256:512].sum(1).A1[~self.vm], bins=np.arange(0, 150), histtype='step', label='Not vetoed')
+        plt.hist(np.logical_and(self.d[:, 256:512].toarray() <= 126, self.t[:, 256:512].toarray())[~self.vm, :].sum(1), bins=np.arange(0, 150), histtype='step', label='Not vetoed and delta <= 126')
+        plt.xlabel("Number of channels")
+        plt.title("CC{0} HV side".format(self.detector))
+        plt.legend()
+        plt.semilogy()
+
     def plot_spatial_spectrum(self):
         fig = plt.gcf()
 
@@ -105,13 +149,13 @@ class GeData(object):
 
         fig.add_subplot(211)
 
-        plt.hist2d(self.s_lv, self.c[self.s, self.s_lv].A1, bins=[np.arange(0, 256, 1), binning], cmap='gray');
-        plt.title("CC{0} LV side".format(self.detector));
+        plt.hist2d(self.s_lv, self.c[self.s, self.s_lv].A1, bins=[np.arange(0, 256, 1), binning], cmap='gray')
+        plt.title("CC{0} LV side".format(self.detector))
 
         fig.add_subplot(212)
 
-        plt.hist2d(self.s_hv, self.c[self.s, self.s_hv].A1, bins=[np.arange(256, 512, 1), binning], cmap='gray');
-        plt.title("CC{0} HV side".format(self.detector));
+        plt.hist2d(self.s_hv, self.c[self.s, self.s_hv].A1, bins=[np.arange(256, 512, 1), binning], cmap='gray')
+        plt.title("CC{0} HV side".format(self.detector))
 
     def plot_spectrum(self, asiccha):
         if type(asiccha) == tuple:
@@ -177,6 +221,9 @@ def accumulate(f, cc_number, max_events=10000, verbose=False):
 
     trigger : `~numpy.ndarray`
         Nx512 bool array of the trigger flags, where N <= max_events
+
+    veto : `~numpy.ndarray`
+        Nx4 bool array of the veto flags, where N <= max_events
     """
     event_gen = parser_generator(f, filter_systemid=0x80 + cc_number, filter_tmtype=0xF3, verbose=verbose)
     adc = np.zeros((max_events, 8 * 64), dtype=np.int16)
@@ -184,6 +231,7 @@ def accumulate(f, cc_number, max_events=10000, verbose=False):
     event_time = np.zeros(max_events, dtype=np.int64)
     glitch = np.zeros((max_events, 8 * 64), dtype=np.bool)
     trigger = np.zeros((max_events, 8 * 64), dtype=np.bool)
+    veto = np.zeros((max_events, 4), dtype=np.bool)
     counter = 0
 
     for event in event_gen:
@@ -192,6 +240,7 @@ def accumulate(f, cc_number, max_events=10000, verbose=False):
         event_time[counter] = event['event_time']
         glitch[counter, event['asiccha']] = event['has_glitch']
         trigger[counter, event['asiccha']] = event['has_trigger']
+        veto[counter, :] = [event['veto_lvgr'], event['veto_hvgr'], event['veto_shield'], event['veto_multiple']]
 
         counter += 1
         if counter == max_events:
@@ -207,7 +256,8 @@ def accumulate(f, cc_number, max_events=10000, verbose=False):
             delta_time[:counter, :],
             event_time[:counter],
             glitch[:counter, :],
-            trigger[:counter, :])
+            trigger[:counter, :],
+            veto[:counter, :])
 
 
 def bin_to_sparse_arrays(one_or_more_files, cc_number, max_events=None, verbose=True,
@@ -257,6 +307,9 @@ def bin_to_sparse_arrays(one_or_more_files, cc_number, max_events=None, verbose=
 
     trigger : `~scipy.sparse.csr_matrix`
         Nx512 bool array of the trigger flags
+
+    veto : `~numpy.ndarray`
+        Nx4 bool array of the veto flags, where N <= max_events
     """
     filelist = one_or_more_files if type(one_or_more_files) == list else [one_or_more_files]
 
@@ -269,6 +322,7 @@ def bin_to_sparse_arrays(one_or_more_files, cc_number, max_events=None, verbose=
     event_time = []
     glitch = []
     trigger = []
+    veto = []
     
     total = 0
 
@@ -305,6 +359,7 @@ def bin_to_sparse_arrays(one_or_more_files, cc_number, max_events=None, verbose=
                 event_time.append(chunk[2])
                 glitch.append(glitch_chunk)
                 trigger.append(trigger_chunk)
+                veto.append(chunk[5])
 
                 # Break out if enough chunks have been read
                 if max_events is not None and total >= max_events:
@@ -324,6 +379,7 @@ def bin_to_sparse_arrays(one_or_more_files, cc_number, max_events=None, verbose=
     event_time = np.hstack(event_time)
     glitch = sps.vstack(glitch, 'csr')
     trigger = sps.vstack(trigger, 'csr')
+    veto = np.vstack(veto)
     if len(cms) > 0:
         cms_out = sps.vstack(cms, 'csr')
     else:
@@ -334,11 +390,12 @@ def bin_to_sparse_arrays(one_or_more_files, cc_number, max_events=None, verbose=
         event_time = event_time[:max_events]
         glitch = glitch[:max_events, :]
         trigger = trigger[:max_events, :]
+        veto = veto[:max_events, :]
         if cms_out is not None: cms_out[:max_events, :]
 
     print("Total events: {0}".format(len(event_time)))
 
-    return (adc, cms_out, delta_time, event_time, glitch, trigger)
+    return (adc, cms_out, delta_time, event_time, glitch, trigger, veto)
 
 
 def process(one_or_more_files, cc_number, identifier):
