@@ -58,8 +58,21 @@ class GeData(object):
         self.single_triggers_lv = self.trigger[self.single_triggers, 0:256].nonzero()[1]
         self.single_triggers_hv = self.trigger[self.single_triggers, 256:512].nonzero()[1] + 256
 
-    def save(self, filename):
-        with gzip.open(filename, 'wb') as f:
+    def save(self, save_file=None):
+        """Save the parsed data for future reloading.
+        The data is stored in gzip-compressed binary pickle format.
+
+        Parameters
+        ----------
+        save_file : str
+            The name of the save file to create.  If none is provided, the default is the name of
+            the telemetry file with the extension ".pgz" appended.
+
+        """
+        if save_file is None:
+            save_file = self.filename + ".pgz"
+
+        with gzip.open(save_file, 'wb') as f:
             pickle.dump({'filename' : self.filename,
                          'adc' : self.adc,
                          'cms' : self.cms,
