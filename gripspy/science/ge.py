@@ -121,8 +121,8 @@ class GeData(object):
     def plot_multiple_trigger_veto(self, side):
         side %= 2
         plt.hist(self.t[:, side*256:(side+1)*256].sum(1).A1, bins=np.arange(0, 150), histtype='step', label='All')
-        plt.hist(self.t[:, side*256:(side+1)*256].sum(1).A1[~self.vm], bins=np.arange(0, 150), histtype='step', label='Not vetoed')
-        plt.hist(np.logical_and(self.d[:, side*256:(side+1)*256].toarray() <= 126, self.t[:, side*256:(side+1)*256].toarray())[~self.vm, :].sum(1), bins=np.arange(0, 150), histtype='step', label='Not vetoed and delta <= 126')
+        plt.hist(self.t[:, side*256:(side+1)*256].sum(1).A1[~self.vm.todense().A1], bins=np.arange(0, 150), histtype='step', label='Not vetoed')
+        plt.hist(np.logical_and(self.d[:, side*256:(side+1)*256].toarray() <= 126, self.t[:, side*256:(side+1)*256].toarray())[~self.vm.todense().A1, :].sum(1), bins=np.arange(0, 150), histtype='step', label='Not vetoed and delta <= 126')
         plt.xlabel("Number of channels")
         plt.title("CC{0} {1} side".format(self.detector, "LV" if side == 0 else "HV"))
         plt.legend()
@@ -281,7 +281,7 @@ def bin_to_sparse_arrays(one_or_more_files, cc_number, max_events=None, verbose=
     trigger : `~scipy.sparse.csr_matrix`
         Nx512 bool array of the trigger flags
 
-    veto : `~numpy.ndarray`
+    veto : `~scipy.sparse.csr_matrix`
         Nx4 bool array of the veto flags, where N <= max_events
     """
     filelist = one_or_more_files if type(one_or_more_files) == list else [one_or_more_files]
@@ -307,10 +307,9 @@ def bin_to_sparse_arrays(one_or_more_files, cc_number, max_events=None, verbose=
                 chunk = accumulate(f, cc_number, max_events=chunk_size, verbose=verbose)
                 total += len(chunk[2])
 
-                # Convert to sparse matrices
-                adc_chunk = sps.coo_matrix(chunk[0]) # COO format to use its row/col indices
-                glitch_chunk = sps.csr_matrix(chunk[3]) # CSR format for output
-                trigger_chunk = sps.coo_matrix(chunk[4]) # COO format to use its row/col indices
+                # Convert to sparse matrices, COO format to use row/col indices
+                adc_chunk = sps.coo_matrix(chunk[0])
+                trigger_chunk = sps.coo_matrix(chunk[4])
                 # Care needs to be taken with delta_time because 0 is a valid value
                 delta_time_chunk = sps.coo_matrix((chunk[1][trigger_chunk.row, trigger_chunk.col], (trigger_chunk.row, trigger_chunk.col)), shape=trigger_chunk.shape, dtype=np.int8)
 
@@ -330,9 +329,9 @@ def bin_to_sparse_arrays(one_or_more_files, cc_number, max_events=None, verbose=
                 adc.append(adc_chunk)
                 delta_time.append(delta_time_chunk)
                 event_time.append(chunk[2])
-                glitch.append(glitch_chunk)
+                glitch.append(sps.csr_matrix(chunk[3]))
                 trigger.append(trigger_chunk)
-                veto.append(chunk[5])
+                veto.append(sps.csr_matrix(chunk[5]))
 
                 # Break out if enough chunks have been read
                 if max_events is not None and total >= max_events:
@@ -352,7 +351,7 @@ def bin_to_sparse_arrays(one_or_more_files, cc_number, max_events=None, verbose=
     event_time = np.hstack(event_time)
     glitch = sps.vstack(glitch, 'csr')
     trigger = sps.vstack(trigger, 'csr')
-    veto = np.vstack(veto)
+    veto = sps.vstack(veto, 'csr')
     if len(cms) > 0:
         cms_out = sps.vstack(cms, 'csr')
     else:
@@ -408,6 +407,9 @@ def process(one_or_more_files, cc_number, identifier):
 
     trigger : `~scipy.sparse.csr_matrix`
         Nx512 bool array of the trigger flags
+
+    veto : `~scipy.sparse.csr_matrix`
+        Nx4 bool array of the veto flags, where N <= max_events
     """
     filelist = one_or_more_files if type(one_or_more_files) == list else [one_or_more_files]
 
