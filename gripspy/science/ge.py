@@ -1,6 +1,7 @@
 from __future__ import division, absolute_import, print_function
 
 import os
+import pickle
 
 import numpy as np
 import scipy.sparse as sps
@@ -20,18 +21,32 @@ stripmap = np.array([np.loadtxt(os.path.join(DIR, "asicmap", "asicmap{0}.txt".fo
 
 
 class GeData(object):
-    def __init__(self, filename, detector):
-        self.filename = filename
+    def __init__(self, detector, telemetry_file=None, save_file=None):
         self.detector = detector
 
-        result = process(filename, detector, os.path.join(DIR, "cms", "cc{0}_1000".format(detector)))
-        self.adc = result[0]
-        self.cms = result[1]
-        self.delta_time = result[2]
-        self.event_time = result[3]
-        self.glitch = result[4]
-        self.trigger = result[5]
-        self.veto = result[6]
+        if telemetry_file is not None:
+            self.filename = telemetry_file
+            result = process(telemetry_file, detector, os.path.join(DIR, "cms", "cc{0}_1000".format(detector)))
+            self.adc = result[0]
+            self.cms = result[1]
+            self.delta_time = result[2]
+            self.event_time = result[3]
+            self.glitch = result[4]
+            self.trigger = result[5]
+            self.veto = result[6]
+        elif save_file is not None:
+            with open(save_file, 'rb') as f:
+                saved = pickle.load(f)
+                self.filename = saved['filename']
+                self.adc = saved['adc']
+                self.cms = saved['cms']
+                self.delta_time = saved['delta_time']
+                self.event_time = saved['event_time']
+                self.glitch = saved['glitch']
+                self.trigger = saved['trigger']
+                self.veto = saved['veto']
+        else:
+            raise RuntimeError("Either a telemetry file or a save file must be specified")
 
         self.single_triggers = np.flatnonzero(np.logical_and(self.trigger[:, 0:256].sum(1) == 1,
                                                              self.trigger[:, 256:512].sum(1) == 1).A1)
@@ -41,6 +56,17 @@ class GeData(object):
 
         self.single_triggers_lv = self.trigger[self.single_triggers, 0:256].nonzero()[1]
         self.single_triggers_hv = self.trigger[self.single_triggers, 256:512].nonzero()[1] + 256
+
+    def save(self, filename):
+        with open(filename, 'wb') as f:
+            pickle.dump({'filename' : self.filename,
+                         'adc' : self.adc,
+                         'cms' : self.cms,
+                         'delta_time' : self.delta_time,
+                         'event_time' : self.event_time,
+                         'glitch' : self.glitch,
+                         'trigger' : self.trigger,
+                         'veto' : self.veto}, f, pickle.HIGHEST_PROTOCOL)
 
     @property
     def a(self):
