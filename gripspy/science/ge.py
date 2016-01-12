@@ -2,6 +2,7 @@ from __future__ import division, absolute_import, print_function
 
 import os
 import pickle
+import gzip
 
 import numpy as np
 import scipy.sparse as sps
@@ -35,7 +36,7 @@ class GeData(object):
             self.trigger = result[5]
             self.veto = result[6]
         elif save_file is not None:
-            with open(save_file, 'rb') as f:
+            with gzip.open(save_file, 'rb') as f:
                 saved = pickle.load(f)
                 self.filename = saved['filename']
                 self.adc = saved['adc']
@@ -58,7 +59,7 @@ class GeData(object):
         self.single_triggers_hv = self.trigger[self.single_triggers, 256:512].nonzero()[1] + 256
 
     def save(self, filename):
-        with open(filename, 'wb') as f:
+        with gzip.open(filename, 'wb') as f:
             pickle.dump({'filename' : self.filename,
                          'adc' : self.adc,
                          'cms' : self.cms,
