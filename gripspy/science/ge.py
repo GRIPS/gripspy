@@ -130,7 +130,7 @@ class GeData(object):
         lv = stripmap[self.s_lv]
         hv = stripmap[self.s_hv]
         good = np.logical_and(lv < 900, hv < 900)
-        return sps.coo_matrix((good, (hv, lv)), dtype=int).toarray()
+        return sps.coo_matrix((good, (hv, lv)), shape=(150, 150), dtype=int).toarray()
 
     def plot_depth(self, binning=np.arange(-595, 596, 10)):
         plt.hist((self.d[self.s, self.s_hv].A1 - self.d[self.s, self.s_lv].A1) * 10.,
@@ -147,9 +147,9 @@ class GeData(object):
 
     def plot_multiple_trigger_veto(self, side):
         side %= 2
-        plt.hist(self.t[:, side*256:(side+1)*256].sum(1).A1, bins=np.arange(0, 150), histtype='step', label='All')
-        plt.hist(self.t[:, side*256:(side+1)*256].sum(1).A1[~self.vm.todense().A1], bins=np.arange(0, 150), histtype='step', label='Not vetoed')
-        plt.hist(np.logical_and(self.d[:, side*256:(side+1)*256].toarray() <= 126, self.t[:, side*256:(side+1)*256].toarray())[~self.vm.todense().A1, :].sum(1), bins=np.arange(0, 150), histtype='step', label='Not vetoed and delta <= 126')
+        plt.hist(self.t[:, side*256:(side+1)*256].sum(1).A1, bins=np.arange(1, 151), histtype='step', label='All')
+        plt.hist(self.t[:, side*256:(side+1)*256].sum(1).A1[~self.vm.todense().A1], bins=np.arange(1, 151), histtype='step', label='Not vetoed')
+        plt.hist(np.logical_and(self.d[:, side*256:(side+1)*256].toarray() <= 126, self.t[:, side*256:(side+1)*256].toarray())[~self.vm.todense().A1, :].sum(1), bins=np.arange(1, 151), histtype='step', label='Not vetoed and delta <= 126')
         plt.xlabel("Number of channels")
         plt.title("CC{0} {1} side".format(self.detector, "LV" if side == 0 else "HV"))
         plt.legend()
