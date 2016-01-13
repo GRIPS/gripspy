@@ -2,6 +2,11 @@
 *.pyd
 *.so
 
+gripspy/util/checksum.c
+
+build
+gripspy.egg-info
+
 *.swp
 *~
 

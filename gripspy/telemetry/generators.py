@@ -2,16 +2,16 @@ from __future__ import division, absolute_import, print_function
 
 from sys import stdout
 
-from . import parsers
+from .parsers import parser
+from ..util.checksum import crc16
 
 
 __all__ = ['packet_generator', 'parser_generator']
 
 
 def packet_generator(f, verbose=False):
-    """Generator that yields GRIPS packets from a telemetry-file object.
-    
-    No packet validation is performed.
+    """Generator that yields valid GRIPS packets from a telemetry-file object.
+    Packets that have invalid checksums are skipped past.
 
     Parameters
     ----------
@@ -46,10 +46,7 @@ def packet_generator(f, verbose=False):
                     f.seek(-1, 1)
                 continue
 
-            # Calculate the number of remaining bytes
             sync_word_position = f.tell() - 2
-            f.seek(0, 2)
-            end_of_file = f.tell() # computed every time in case the file is growing
             remaining_bytes = end_of_file - sync_word_position
 
             if remaining_bytes < 16:
@@ -57,28 +54,31 @@ def packet_generator(f, verbose=False):
                 break
 
             # Extract the payload length from the header
-            f.seek(sync_word_position + 6)
-            length = ord(f.read(1)) + (ord(f.read(1)) << 8)
+            packet = '\x90\xeb' + f.read(14)
+            length = ord(packet[6]) | ord(packet[7]) << 8
 
-            if remaining_bytes >= length:
-                f.seek(sync_word_position)
-                packet = f.read(16 + length)
-                if verbose:
-                    if (sync_word_position + length) >= ((percent_completed + 1) / 100.) * end_of_file:
-                        percent_completed += 1
-                        stdout.write("{0:3d}%\b\b\b\b".format(percent_completed))
+            if remaining_bytes >= 16 + length:
+                packet = bytearray(packet + f.read(length))
 
-                yield packet
+                claimed_checksum = packet[2] | packet[3] << 8
+                packet[2:4] = [0, 0]
+                if claimed_checksum == crc16(packet):
+                    if verbose:
+                        if (sync_word_position + length) >= ((percent_completed + 1) / 100.) * end_of_file:
+                            percent_completed += 1
+                            stdout.write("{0:3d}%\b\b\b\b".format(percent_completed))
+                    yield packet
+                else:
+                    f.seek(sync_word_position + 2)
+
             else:
                 print("Apparent payload length exceeds file length, skipping")
-
-            # Skip the sync word, but no further in case it's not a true sync word
-            f.seek(sync_word_position + 2)
+                f.seek(sync_word_position + 2)
 
 
 def parser_generator(f, filter_systemid=None, filter_tmtype=None, verbose=False):
     pg = packet_generator(f, verbose=verbose)
     for packet in pg:
-        out = parsers.parser(packet, filter_systemid=filter_systemid, filter_tmtype=filter_tmtype)
+        out = parser(packet, filter_systemid=filter_systemid, filter_tmtype=filter_tmtype)
         if out is not None:
             yield out
