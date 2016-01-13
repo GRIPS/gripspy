@@ -9,7 +9,7 @@ __all__ = ['parser']
 INDEX_CHECKSUM = 2
 INDEX_SYSTEMID = 4
 INDEX_TMTYPE = 5
-INDEX_PAYLOAD_LENGTH = 6
+INDEX_LENGTH = 6
 INDEX_COUNTER = 8
 INDEX_SYSTIME = 10
 INDEX_PAYLOAD = 16
@@ -20,6 +20,8 @@ def parser(packet, filter_systemid=None, filter_tmtype=None):
 
     header = {'systemid' : buf[INDEX_SYSTEMID],
               'tmtype'   : buf[INDEX_TMTYPE],
+              'length'   : buf[INDEX_LENGTH]
+                           | buf[INDEX_LENGTH + 1] << 8,
               'counter'  : buf[INDEX_COUNTER]
                            | buf[INDEX_COUNTER + 1] << 8,
               'systime'  : buf[INDEX_SYSTIME]
@@ -41,6 +43,11 @@ def parser(packet, filter_systemid=None, filter_tmtype=None):
         # Raw event packet
         elif header['tmtype'] == 0xF1 or header['tmtype'] == 0xF2:
             return ge_raw_event(buf, header)
+    # Shield electronics packet
+    elif header['systemid'] == 0xB6:
+        # Event packet
+        if header['tmtype'] == 0x80:
+            return bgo_event(buf, header)
 
 
 def ge_event(buf, out):
@@ -144,5 +151,44 @@ def ge_raw_event(buf, out):
     out['has_glitch'] = has_glitch
     out['has_trigger'] = has_trigger
     out['trigger_time'] = trigger_time
+
+    return out
+
+
+def bgo_event(buf, out):
+    """
+    """
+    if out['systemid'] != 0xB6 or out['tmtype'] != 0x80:
+        raise ValueError
+
+    event_time = np.zeros(64, np.int64)
+    clock_source = np.zeros(64, np.uint8)
+    clock_synced = np.zeros(64, np.bool)
+    channel = np.zeros(64, np.uint8)
+    level = np.zeros(64, np.uint8)
+
+    index = INDEX_PAYLOAD
+    loc = 0
+
+    while index < INDEX_PAYLOAD + out['length']:
+        time_lsb = buf[index] | buf[index + 1] << 8 | buf[index + 2] << 16 | (buf[index + 3] & 0x0F) << 24
+        time_diff = (out['systime'] & ((1 << 28) - 1)) - time_lsb
+        if time_diff < 0:
+            time_diff += 1 << 28
+        event_time[loc] = (out['systime'] - time_diff) * 10 + (buf[index + 3] >> 4) * 2
+
+        clock_source[loc] = buf[index + 4] >> 7 & 1
+        clock_synced[loc] = np.bool(buf[index + 4] >> 6 & 1)
+        channel[loc] = buf[index + 4] >> 2 & 0x0F
+        level[loc] = buf[index + 4] & 0x03
+
+        index += 8
+        loc += 1
+
+    out['event_time'] = event_time[:loc]
+    out['clock_source'] = clock_source[:loc]
+    out['clock_synced'] = clock_synced[:loc]
+    out['channel'] = channel[:loc]
+    out['level'] = level[:loc]
 
     return out

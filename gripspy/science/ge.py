@@ -66,11 +66,11 @@ class GeData(object):
         ----------
         save_file : str
             The name of the save file to create.  If none is provided, the default is the name of
-            the telemetry file with the extension ".pgz" appended.
+            the telemetry file with the extension ".ge?.pgz" appended.
 
         """
         if save_file is None:
-            save_file = self.filename + ".pgz"
+            save_file = self.filename + ".ge{0}.pgz".format(self.detector)
 
         with gzip.open(save_file, 'wb') as f:
             pickle.dump({'filename' : self.filename,
@@ -96,7 +96,7 @@ class GeData(object):
 
     @property
     def e(self):
-        return self.delta_time
+        return self.event_time
 
     @property
     def g(self):
