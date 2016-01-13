@@ -3,6 +3,7 @@
 *.so
 
 gripspy/util/checksum.c
+gripspy/util/checksum.html
 
 build
 gripspy.egg-info

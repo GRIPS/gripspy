@@ -17,7 +17,7 @@ setup(
                       'scipy',
                       'matplotlib',
                       'cython'],
-    ext_modules = cythonize(ext_modules),
+    ext_modules = cythonize(ext_modules, annotate=True),
     url='',
     license='See LICENSE.txt',
     description='',
