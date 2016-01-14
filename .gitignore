@@ -4,6 +4,9 @@
 
 gripspy/util/checksum.c
 gripspy/util/checksum.html
+gripspy/util/coincidence.c
+gripspy/util/coincidence.html
+
 
 build
 gripspy.egg-info

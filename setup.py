@@ -5,7 +5,8 @@ from setuptools import setup, Extension
 
 from Cython.Build import cythonize
 
-ext_modules = [Extension("gripspy.util.checksum", ["gripspy/util/checksum.pyx"])]
+ext_modules = [Extension("gripspy.util.checksum", ["gripspy/util/checksum.pyx"]),
+               Extension("gripspy.util.coincidence", ["gripspy/util/coincidence.pyx"])]
 
 setup(
     name='gripspy',
