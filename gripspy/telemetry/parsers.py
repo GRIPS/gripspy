@@ -46,7 +46,7 @@ def parser(packet, filter_systemid=None, filter_tmtype=None):
     # Shield electronics packet
     elif header['systemid'] == 0xB6:
         # Event packet
-        if header['tmtype'] == 0x80:
+        if header['tmtype'] == 0x80 or header['tmtype'] == 0x82:
             return bgo_event(buf, header)
 
 
@@ -120,7 +120,7 @@ def ge_event(buf, out):
 def ge_raw_event(buf, out):
     """
     """
-    if out['systemid'] & 0xF0 != 0x80 or (out['tmtype'] != 0xF1 and out['tmtype'] != 0xF2):
+    if not (out['systemid'] & 0xF0 == 0x80 and (out['tmtype'] == 0xF1 or out['tmtype'] == 0xF2)):
         raise ValueError
 
     out['detector'] = out['systemid'] & 0x0F
@@ -158,14 +158,16 @@ def ge_raw_event(buf, out):
 def bgo_event(buf, out):
     """
     """
-    if out['systemid'] != 0xB6 or out['tmtype'] != 0x80:
+    if not (out['systemid'] == 0xB6 and (out['tmtype'] == 0x80 or out['tmtype'] == 0x82)):
         raise ValueError
 
-    event_time = np.zeros(64, np.int64)
-    clock_source = np.zeros(64, np.uint8)
-    clock_synced = np.zeros(64, np.bool)
-    channel = np.zeros(64, np.uint8)
-    level = np.zeros(64, np.uint8)
+    event_time = np.zeros(102, np.int64)
+    clock_source = np.zeros(102, np.uint8)
+    clock_synced = np.zeros(102, np.bool)
+    channel = np.zeros(102, np.uint8)
+    level = np.zeros(102, np.uint8)
+
+    bytes_per_event = 5 if out['tmtype'] == 0x82 else 8
 
     index = INDEX_PAYLOAD
     loc = 0
@@ -182,7 +184,7 @@ def bgo_event(buf, out):
         channel[loc] = buf[index + 4] >> 2 & 0x0F
         level[loc] = buf[index + 4] & 0x03
 
-        index += 8
+        index += bytes_per_event
         loc += 1
 
     out['event_time'] = event_time[:loc]

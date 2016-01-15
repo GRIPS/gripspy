@@ -27,22 +27,28 @@ class BGOData(object):
             self.clock_source = []
             self.clock_synced = []
 
+            count = 0
+
             with open(telemetry_file, 'rb') as f:
-                pg = parser_generator(f, filter_systemid=0xB6, filter_tmtype=0x80, verbose=True)
+                pg = parser_generator(f, filter_systemid=0xB6, verbose=True)
                 for p in pg:
+                    count += len(p['event_time'])
                     self.event_time.append(p['event_time'])
                     self.channel.append(p['channel'])
                     self.level.append(p['level'])
                     self.clock_source.append(p['clock_source'])
                     self.clock_synced.append(p['clock_synced'])
 
-            self.event_time = np.hstack(self.event_time)
-            self.channel = np.hstack(self.channel)
-            self.level = np.hstack(self.level)
-            self.clock_source = np.hstack(self.clock_source)
-            self.clock_synced = np.hstack(self.clock_synced)
+            if count > 0:
+                self.event_time = np.hstack(self.event_time)
+                self.channel = np.hstack(self.channel)
+                self.level = np.hstack(self.level)
+                self.clock_source = np.hstack(self.clock_source)
+                self.clock_synced = np.hstack(self.clock_synced)
 
-            print("Total events: {0}".format(len(self.event_time)))
+                print("Total events: {0}".format(count))
+            else:
+                print("No events found")
 
         elif save_file is not None:
             with gzip.open(save_file, 'rb') as f:
