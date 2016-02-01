@@ -48,6 +48,9 @@ def parser(packet, filter_systemid=None, filter_tmtype=None):
         # Event packet
         if header['tmtype'] == 0x80 or header['tmtype'] == 0x82:
             return bgo_event(buf, header)
+        # Counter packet
+        if header['tmtype'] == 0x81:
+            return bgo_counter(buf, header)
 
 
 def ge_event(buf, out):
@@ -192,5 +195,47 @@ def bgo_event(buf, out):
     out['clock_synced'] = clock_synced[:loc]
     out['channel'] = channel[:loc]
     out['level'] = level[:loc]
+
+    return out
+
+
+def bgo_counter(buf, out):
+    """
+    """
+    if not (out['systemid'] == 0xB6 and out['tmtype'] == 0x81):
+        raise ValueError
+
+    index = INDEX_PAYLOAD
+
+    out['counter_time'] = buf[index] \
+                          | buf[index + 1] << 8 \
+                          | buf[index + 2] << 16 \
+                          | buf[index + 3] << 24 \
+                          | buf[index + 4] << 32 \
+                          | buf[index + 5] << 40
+
+    index += 6
+
+    out['total_livetime'] = buf[index] \
+                            | buf[index + 1] << 8 \
+                            | buf[index + 2] << 16
+    out['total_livetime'] /= 5.
+
+    index += 3
+
+    channel_livetime = np.zeros(12, np.int32)
+    for i in range(12):
+        channel_livetime[i] = buf[index] \
+                              | buf[index + 1] << 8 \
+                              | buf[index + 2] << 16
+        index += 3
+    out['channel_livetime'] = channel_livetime / 5.
+
+    out['channel_count'] = np.fromstring(str(buf[index:index + 96]), dtype=np.uint16).reshape((12, 4))
+    index += 96
+
+    out['veto_count'] = buf[index] \
+                        | buf[index + 1] << 8 \
+                        | buf[index + 2] << 16
 
     return out
