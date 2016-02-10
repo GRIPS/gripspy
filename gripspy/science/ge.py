@@ -14,7 +14,7 @@ from ..telemetry import parser_generator
 __all__ = ['GeData']
 
 
-DIR = os.path.join(__file__, "..")
+DIR = os.path.dirname(__file__)
 
 
 stripmap = np.array([np.loadtxt(os.path.join(DIR, "asicmap", "asicmap{0}.txt".format(asic)), dtype=np.uint16)[:, 1]
