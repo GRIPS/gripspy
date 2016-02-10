@@ -9,6 +9,7 @@ gripspy/util/coincidence.html
 
 
 build
+dist
 gripspy.egg-info
 
 *.swp

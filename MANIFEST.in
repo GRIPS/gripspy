@@ -1,0 +1,6 @@
+recursive-include gripspy *.py
+recursive-include gripspy *.pyx
+recursive-include gripspy *.txt
+recursive-include gripspy *.npz
+
+include README.md

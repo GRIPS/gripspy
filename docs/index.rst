@@ -25,6 +25,8 @@ This package depends on:
 * SciPy
 * matplotlib
 * Cython, and corresponding build environment for compiling C code
+* scikit-image
+* Astropy
 
 However, rather than installing these packages individually, it is highly recommended that one instead use a scientific Python distribution (e.g., `Anaconda <https://www.continuum.io/downloads>`_), which will include useful packages such as Jupyter Notebook (fomerly IPython Notebook).
 

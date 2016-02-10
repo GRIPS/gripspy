@@ -1,4 +1,4 @@
-from setuptools import setup, Extension
+from setuptools import setup, Extension, find_packages
 
 from Cython.Build import cythonize
 
@@ -10,11 +10,13 @@ setup(
     version='0.1',
     author='',
     author_email='',
-    packages=['gripspy'],
+    packages=find_packages(),
     install_requires=['numpy',
                       'scipy',
                       'matplotlib',
-                      'cython'],
+                      'cython',
+                      'scikit-image',
+                      'astropy'],
     ext_modules = cythonize(ext_modules, annotate=True),
     url='',
     license='See LICENSE.txt',
