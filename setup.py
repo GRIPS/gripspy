@@ -8,9 +8,10 @@ ext_modules = [Extension("gripspy.util.checksum", ["gripspy/util/checksum.pyx"])
 setup(
     name='gripspy',
     version='0.1',
-    author='',
-    author_email='',
+    author='Albert Y. Shih',
+    author_email='ayshih@gmail.com',
     packages=find_packages(),
+    package_data={'gripspy.science': ['asicmap/*.txt', 'cms/*.npz']},
     install_requires=['numpy',
                       'scipy',
                       'matplotlib',
