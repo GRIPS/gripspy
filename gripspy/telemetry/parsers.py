@@ -1,3 +1,6 @@
+"""
+Module for parsing a telemetry packet
+"""
 from __future__ import division, absolute_import, print_function
 
 import numpy as np
@@ -16,6 +19,23 @@ INDEX_PAYLOAD = 16
 
 
 def parser(packet, filter_systemid=None, filter_tmtype=None):
+    """
+    Parse a telemetry packet for its contents
+
+    Parameters
+    ----------
+    packet : bytearray-like
+        A full telemetry packet including the 16-byte header
+    filter_systemid : int
+        If specified, only parse the packet if the SystemID matches
+    filter_tmtype : int
+        If specified, only parse the packet if the TmType matches
+
+    Returns
+    -------
+    out : dict
+        The contents of the telemetry packet
+    """
     buf = bytearray(packet)
 
     header = {'systemid' : buf[INDEX_SYSTEMID],
@@ -54,7 +74,11 @@ def parser(packet, filter_systemid=None, filter_tmtype=None):
 
 
 def ge_event(buf, out):
-    """Assumes only one event in each event packet
+    """Parse an event from a germanium detector (SystemID 0x8? and TmType 0xF3)
+    
+    Notes
+    -----
+    Assumes only one event in each event packet
     """
     if out['systemid'] & 0xF0 != 0x80 or out['tmtype'] != 0xF3:
         raise ValueError
@@ -121,7 +145,7 @@ def ge_event(buf, out):
     return out
 
 def ge_raw_event(buf, out):
-    """
+    """Parse a raw event from a germanium detector (SystemID 0x8? and TmType 0xF1 or 0xF2)
     """
     if not (out['systemid'] & 0xF0 == 0x80 and (out['tmtype'] == 0xF1 or out['tmtype'] == 0xF2)):
         raise ValueError
@@ -159,7 +183,11 @@ def ge_raw_event(buf, out):
 
 
 def bgo_event(buf, out):
-    """
+    """Parse an event packet from the BGO shields (SystemID 0xB6 and TmType 0x80 or 0x82)
+
+    Notes
+    -----
+    TmType 0x80 can have up to 64 events, while TmType 0x82 can have up to 102 events
     """
     if not (out['systemid'] == 0xB6 and (out['tmtype'] == 0x80 or out['tmtype'] == 0x82)):
         raise ValueError
@@ -200,7 +228,7 @@ def bgo_event(buf, out):
 
 
 def bgo_counter(buf, out):
-    """
+    """Parse a counters packet from the BGO shields (SystemID 0xB6 and TmType 0x81)
     """
     if not (out['systemid'] == 0xB6 and out['tmtype'] == 0x81):
         raise ValueError

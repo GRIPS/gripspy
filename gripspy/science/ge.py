@@ -1,3 +1,6 @@
+"""
+Module for analyzing data from the germanium detectors
+"""
 from __future__ import division, absolute_import, print_function
 
 import os
@@ -22,6 +25,21 @@ stripmap = np.array([np.loadtxt(os.path.join(DIR, "asicmap", "asicmap{0}.txt".fo
 
 
 class GeData(object):
+    """Class for analyzing event data from a germanium detector
+
+    Parameters
+    ----------
+    detector : int
+        The detector number (0 to 5, usually)
+    telemetry_file : str
+        The name of the telemetry file to analyze.  If None is specified, a save file must be specified.
+    save_file : str
+        The name of a save file from a telemetry file that was previously parsed.
+
+    Notes
+    -----
+    `event_time` is stored in 10-ns steps
+    """
     def __init__(self, detector, telemetry_file=None, save_file=None):
         self.detector = detector
 
@@ -84,74 +102,97 @@ class GeData(object):
 
     @property
     def a(self):
+        """Shorthand for the `adc` attribute"""
         return self.adc
 
     @property
     def c(self):
+        """Shorthand for the `cms` attribute"""
         return self.cms
 
     @property
     def d(self):
+        """Shorthand for the `delta_time` attribute"""
         return self.delta_time
 
     @property
     def e(self):
+        """Shorthand for the `event_time` attribute"""
         return self.event_time
 
     @property
     def g(self):
+        """Shorthand for the `glitch` attribute"""
         return self.glitch
 
     @property
     def t(self):
+        """Shorthand for the `trigger` attribute"""
         return self.trigger
 
     @property
     def v(self):
+        """Shorthand for the `veto` attribute"""
         return self.veto
 
     @property
     def vl(self):
+        """Shorthand for the LV guard-ring vetoes"""
         return self.veto[:, 0]
 
     @property
     def vh(self):
+        """Shorthand for the HV guard-ring vetoes"""
         return self.veto[:, 1]
 
     @property
     def vs(self):
+        """Shorthand for the shield vetoes"""
         return self.veto[:, 2]
 
     @property
     def vm(self):
+        """Shorthand for the multiple-trigger vetoes"""
         return self.veto[:, 3]
 
     @property
     def s(self):
+        """Shorthand for the `single_triggers` attribute"""
         return self.single_triggers
 
     @property
     def s_lv(self):
+        """Shorthand for the `single_triggers_lv` attribute"""
         return self.single_triggers_lv
 
     @property
     def s_hv(self):
+        """Shorthand for the `single_triggers_lv` attribute"""
         return self.single_triggers_hv
 
     @property
     def hitmap(self):
+        """The hitmap of single-trigger events"""
         lv = stripmap[self.s_lv]
         hv = stripmap[self.s_hv]
         good = np.logical_and(lv < 900, hv < 900)
         return sps.coo_matrix((good, (hv, lv)), shape=(150, 150), dtype=int).toarray()
 
     def plot_depth(self, binning=np.arange(-595, 596, 10)):
+        """Plot the depth-information plot
+        
+        Parameters
+        ----------
+        binning : array-like
+            The binning to use for the underlying data
+        """
         plt.hist((self.d[self.s, self.s_hv].A1 - self.d[self.s, self.s_lv].A1) * 10.,
                  bins=binning, histtype='step', label='CC{0}'.format(self.detector))
         plt.xlabel("Nanoseconds")
         plt.title("CC{0} HV time minus LV time (i.e., left is HV side)".format(self.detector))
 
     def plot_hitmap(self):
+        """Plot the hitmap of single-trigger events"""
         plt.imshow(self.hitmap, origin='lower', cmap='gray')
         plt.title("CC{0}".format(self.detector))
         plt.xlabel("LV (ASICs 1/3 to 0/2)")
@@ -159,6 +200,13 @@ class GeData(object):
         plt.colorbar()
 
     def plot_multiple_trigger_veto(self, side):
+        """Plot the distribution of multiple-trigger events and veto information
+
+        Parameters
+        ----------
+        side : 0 or 1
+            0 for LV side, 1 for HV side
+        """
         side %= 2
         plt.hist(self.t[:, side*256:(side+1)*256].sum(1).A1, bins=np.arange(1, 151), histtype='step', label='All')
         plt.hist(self.t[:, side*256:(side+1)*256].sum(1).A1[~self.vm.todense().A1], bins=np.arange(1, 151), histtype='step', label='Not vetoed')
@@ -169,11 +217,27 @@ class GeData(object):
         plt.semilogy()
 
     def plot_spatial_spectrum(self, side):
+        """Plot the spatial spectrum
+
+        Parameters
+        ----------
+        side : 0 or 1
+            0 for LV side, 1 for HV side
+        """
         s_side = self.s_lv if side == 0 else self.s_hv
         plt.hist2d(s_side, self.c[self.s, s_side].A1, bins=[np.arange(side*256, (side+1)*256, 1), np.arange(-128, 2048, 8)], cmap='gray')
         plt.title("CC{0} {1} side".format(self.detector, "LV" if side == 0 else "HV"))
 
     def plot_spectrum(self, asiccha, binning=np.arange(0, 3584, 8)):
+        """Plot the raw spectrum for a specified channel
+
+        Parameters
+        ----------
+        asiccha : tuple or int
+            Either (ASIC#, channel#) if a tuple or ASIC# * 64 + channel# if an int
+        binning : array-like
+            The binning to use for the underlying data
+        """
         if type(asiccha) == tuple:
             index = asiccha[0] * 64 + asiccha[1]
         else:
@@ -187,6 +251,15 @@ class GeData(object):
         plt.ylim(0, np.max(val))
 
     def plot_subtracted_spectrum(self, asiccha, binning=np.arange(-128, 2048, 8)):
+        """Plot the common-mode-subtracted spectrum for a specified channel
+
+        Parameters
+        ----------
+        asiccha : tuple or int
+            Either (ASIC#, channel#) if a tuple or ASIC# * 64 + channel# if an int
+        binning : array-like
+            The binning to use for the underlying data
+        """
         if type(asiccha) == tuple:
             index = asiccha[0] * 64 + asiccha[1]
         else:

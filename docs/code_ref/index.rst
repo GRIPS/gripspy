@@ -7,6 +7,6 @@ Code reference for gripspy
 .. toctree::
    :maxdepth: 2
 
-   science
+   science/index.rst
    telemetry
    util

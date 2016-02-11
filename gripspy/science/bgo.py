@@ -1,3 +1,6 @@
+"""
+Module for analyzing data from the BGO shields
+"""
 from __future__ import division, absolute_import, print_function
 
 import os
@@ -18,6 +21,19 @@ DIR = os.path.join(__file__, "..")
 
 
 class BGOEventData(object):
+    """Class for analyzing event data from the BGO shields
+
+    Parameters
+    ----------
+    telemetry_file : str
+        The name of the telemetry file to analyze.  If None is specified, a save file must be specified.
+    save_file : str
+        The name of a save file from a telemetry file that was previously parsed.
+
+    Notes
+    -----
+    `event_time` is stored in 10-ns steps
+    """
     def __init__(self, telemetry_file=None, save_file=None):
         if telemetry_file is not None:
             self.filename = telemetry_file
@@ -70,11 +86,11 @@ class BGOEventData(object):
         ----------
         save_file : str
             The name of the save file to create.  If none is provided, the default is the name of
-            the telemetry file with the extension ".bgo.pgz" appended.
+            the telemetry file with the extension ".bgoe.pgz" appended.
 
         """
         if save_file is None:
-            save_file = self.filename + ".bgo.pgz"
+            save_file = self.filename + ".bgoe.pgz"
 
         with gzip.open(save_file, 'wb') as f:
             pickle.dump({'filename' : self.filename,
@@ -86,34 +102,50 @@ class BGOEventData(object):
 
     @property
     def c(self):
+        """Shorthand for the `channel` attribute"""
         return self.channel
 
     @property
     def e(self):
+        """Shorthand for the `event_time` attribute"""
         return self.event_time
 
     @property
     def l(self):
+        """Shorthand for the `level` attribute"""
         return self.level
 
     @property
     def l0(self):
+        """Indices for the events of crossing threshold level 0"""
         return np.flatnonzero(self.level == 0)
 
     @property
     def l1(self):
+        """Indices for the events of crossing threshold level 1"""
         return np.flatnonzero(self.level == 1)
 
     @property
     def l2(self):
+        """Indices for the events of crossing threshold level 2"""
         return np.flatnonzero(self.level == 2)
 
     @property
     def l3(self):
+        """Indices for the events of crossing threshold level 3"""
         return np.flatnonzero(self.level == 3)
 
 
 class BGOCounterData(object):
+    """Class for analyzing event data from the BGO shields
+
+    Parameters
+    ----------
+    telemetry_file : str
+        The name of the telemetry file to analyze.  If None is specified, a save file must be specified.
+    save_file : str
+        The name of a save file from a telemetry file that was previously parsed.
+    """
     def __init__(self, telemetry_file=None, save_file=None):
         if telemetry_file is not None:
             self.filename = telemetry_file
@@ -166,11 +198,11 @@ class BGOCounterData(object):
         ----------
         save_file : str
             The name of the save file to create.  If none is provided, the default is the name of
-            the telemetry file with the extension ".bgo.pgz" appended.
+            the telemetry file with the extension ".bgoc.pgz" appended.
 
         """
         if save_file is None:
-            save_file = self.filename + ".bgc.pgz"
+            save_file = self.filename + ".bgoc.pgz"
 
         with gzip.open(save_file, 'wb') as f:
             pickle.dump({'filename' : self.filename,
@@ -182,20 +214,25 @@ class BGOCounterData(object):
 
     @property
     def t(self):
+        """Shorthand for the `counter_time` attribute"""
         return self.counter_time
 
     @property
     def tl(self):
+        """Shorthand for the `total_livetime` attribute"""
         return self.total_livetime
 
     @property
     def c(self):
+        """Shorthand for the `channel_count` attribute"""
         return self.channel_count
 
     @property
     def l(self):
+        """Shorthand for the `channel_livetime` attribute"""
         return self.channel_livetime
 
     @property
     def v(self):
+        """Shorthand for the `veto_count` attribute"""
         return self.veto_count

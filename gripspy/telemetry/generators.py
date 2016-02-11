@@ -1,3 +1,6 @@
+"""
+Module with generators for handling telemetry files
+"""
 from __future__ import division, absolute_import, print_function
 
 from sys import stdout
@@ -10,11 +13,13 @@ __all__ = ['packet_generator', 'parser_generator']
 
 
 def packet_generator(f, verbose=False):
-    """Generator that yields valid GRIPS packets from a telemetry-file object.
+    """Generator that yields valid packets from a telemetry-file object.
     Packets that have invalid checksums are skipped past.
 
     Parameters
     ----------
+    f : file object
+        e.g., an already open file object
     verbose : boolean
         If True, output the percentage of the file as a progress indicator
     """
@@ -77,6 +82,20 @@ def packet_generator(f, verbose=False):
 
 
 def parser_generator(f, filter_systemid=None, filter_tmtype=None, verbose=False):
+    """Generator that yields parsed packet contents from a telemetry-file object.
+    Packets that have invalid checksums are skipped past.
+
+    Parameters
+    ----------
+    f : file object
+        e.g., an already open file object
+    filter_systemid : int
+        If specified, only yield packets that have a matching SystemId
+    filter_tmtype : int
+        If specified, only yield packets that have a match TmType
+    verbose : boolean
+        If True, output the percentage of the file as a progress indicator
+    """
     pg = packet_generator(f, verbose=verbose)
     for packet in pg:
         out = parser(packet, filter_systemid=filter_systemid, filter_tmtype=filter_tmtype)

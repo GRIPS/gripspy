@@ -2,7 +2,7 @@ cimport cython
 from libc.stdlib cimport malloc, free
 
 
-__all__ = ['find_near_pairs']
+__all__ = ['find_nearest_in']
 
 
 ctypedef fused orderable_numeric:
@@ -23,7 +23,7 @@ ctypedef fused orderable_numeric:
 
 @cython.boundscheck(False)
 def find_nearest_in(orderable_numeric[:] a, orderable_numeric[:] b):
-    """For two arrays a and b, returns a list of the indices of the nearest element in b
+    """For two sorted arrays a and b, returns a list of the indices of the nearest element in b
     for each element in a.  The two arrays must be of the same numeric type.
     """
     cdef Py_ssize_t na = a.shape[0]

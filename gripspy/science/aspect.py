@@ -1,3 +1,6 @@
+"""
+Module for processing aspect data
+"""
 from __future__ import division, absolute_import, print_function
 
 from sys import stdout
@@ -17,6 +20,7 @@ NUM_COLS = 1280
 
 
 def _kernel(radius):
+    """The empirically chosen kernel to represent both the Sun and the fiducials."""
     axis = np.arange(-(radius * 2), radius * 2 + 1)
     x, y = np.meshgrid(axis, axis)
     template = 1 - np.cosh(np.sqrt(x**2 + y**2) * 5. / radius) / 200.
@@ -29,6 +33,18 @@ template_fiducial = 1 - _kernel(4)
 
 
 class Frame(object):
+    """Base class for a camera frame
+
+    Parameters
+    ----------
+    filename : str
+        The name of the FITS file of the camera frame
+    uid : int
+        The UID of the camera to check for consistency with the camera frame.
+        The default of None means that consistency is not checked.
+    decimation_range : tuple of int
+        The allowable range of decimation levels.
+    """
     def __init__(self, filename, uid=None, decimation_range=(2, 10)):
         with fits.open(filename) as f:
             if uid != None and f[0].header['CAMERA'] != uid:
@@ -48,6 +64,21 @@ class Frame(object):
             self.image = warp(self.data, transformation, output_shape=(NUM_ROWS, NUM_COLS))
 
     def _detect_decimation(self, decimation_range):
+        """Detects the decimation level of the camera frame.
+
+        Parameters
+        ----------
+        decimation_range : tuple of int
+            The inclusive range of decimation levels to check against the camera frame
+
+        Returns
+        -------
+        decimation_level : int
+            For a decimation_level of N, N-1 rows out of every N rows is empty
+        decimation_index : int
+            The index of the non-empty row for every decimation block
+            (i.e. strictly less than decimation_level)
+        """
         dead1 = (self.data == 0).sum(1) == NUM_COLS
         for step in range(decimation_range[0], decimation_range[1] + 1):
             sub_rows = NUM_ROWS // step
@@ -58,6 +89,7 @@ class Frame(object):
         return (1, 0)
 
     def plot_image(self, **kwargs):
+        """Plots the camera frame, defaulting to no interpolation."""
         imshow_args = {'cmap'   : 'gray',
                        'extent' : [-0.5, NUM_COLS - 0.5, NUM_ROWS - 0.5, -0.5],
                        'interpolation' : 'none'}
@@ -66,6 +98,15 @@ class Frame(object):
 
 
 class PYFrame(Frame):
+    """Class for a pitch-yaw image
+
+    Parameters
+    ----------
+    filename : str
+        The name of the FITS file of the camera frame
+    uid : int
+        Defaults to the UID of the pitch-yaw camera, but can be set to a different camera's UID or to None
+    """
     def __init__(self, filename, uid=158434):
         try:
             Frame.__init__(self, filename, uid=uid)
@@ -75,6 +116,7 @@ class PYFrame(Frame):
         self.peaks, self.fiducials = self._process()
 
     def _process(self):
+        """Finds the Suns and the fiducials."""
         # Perform a coarse search for Suns
         coarse_image = self.image[::10, ::10]
         coarse_match = match_template(coarse_image, template_sun[::10, ::10], pad_input=True)
@@ -113,6 +155,7 @@ class PYFrame(Frame):
         return fine_peaks, fiducials
 
     def plot_image(self, **kwargs):
+        """Plots the pitch-yaw image, including Sun/fiducial detections."""
         if self.peaks:
             # Draw an X at the center of each Sun
             arr_peaks = np.array(self.peaks)
@@ -133,6 +176,15 @@ class PYFrame(Frame):
 
 
 class RFrame(Frame):
+    """Class for a roll image
+
+    Parameters
+    ----------
+    filename : str
+        The name of the FITS file of roll image
+    uid : int
+        Defaults to the UID of the roll camera, but can be set to a different camera's UID or to None
+    """
     def __init__(self, filename, uid=142974):
         try:
             Frame.__init__(self, filename, uid=uid, decimation_range=(10, 10))
@@ -141,10 +193,18 @@ class RFrame(Frame):
 
 
 class FrameSequence(list):
+    """Base class for a sequence of camera frames"""
     pass
 
 
 class PYSequence(FrameSequence):
+    """Class for a sequence of pitch-yaw images
+
+    Parameters
+    ----------
+    list_of_files : list of str
+        List of FITS files with pitch-yaw images
+    """
     def __init__(self, list_of_files):
         FrameSequence.__init__(self)
 
@@ -155,6 +215,7 @@ class PYSequence(FrameSequence):
         stdout.write("\n")
 
     def plot_centers(self, **kwargs):
+        """Plot the center of the brightest Sun across the entire image sequence"""
         time = []
         center_y = []
         center_x = []
@@ -168,6 +229,13 @@ class PYSequence(FrameSequence):
 
 
 class RSequence(FrameSequence):
+    """Class for a sequence of roll images
+
+    Parameters
+    ----------
+    list_of_files : list of str
+        List of FITS files with roll images
+    """
     def __init__(self, list_of_files):
         FrameSequence.__init__(self)
 

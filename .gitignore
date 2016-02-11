@@ -12,6 +12,8 @@ build
 dist
 gripspy.egg-info
 
+docs/_build
+
 *.swp
 *~
 
