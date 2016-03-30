@@ -8,3 +8,7 @@ Utilities
 .. automodule:: gripspy.util.coincidence
    :members:
    :undoc-members:
+
+.. automodule:: gripspy.util.time
+   :members:
+   :undoc-members:

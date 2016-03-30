@@ -27,18 +27,23 @@ def oeb2utc(systime_array):
     Notes
     -----
     This conversion function works as intended for only system times during the flight.
-    Also, the flight computer was restarted on 2016 Jan. 25, which leads to a discontinuity in
-    system times.
+    The flight computer was restarted on 2016 Jan 25, which leads to a discontinuity in system
+    times, and this discontinuity is taken into account by the function.
     """
-    # These reference points need to be updated
-    ref1_systime = 14864585535293
-    ref1_datetime64 = np.datetime64('2016-01-25T00:00:01.7021563Z')
-    ref2_systime = 600373974638
-    ref2_datetime64 = np.datetime64('2016-01-26T01:00:23.0193764Z')
+    # Best-fit parameters provided by Pascal on 2016 Mar 30
+    ref1_datetime64 = np.datetime64('2016-01-18T18:27:12Z')
+    ref1_fit = (948121319866971.46, 0.99999868346236354)
+    ref2_datetime64 = np.datetime64('2016-01-25T08:25:36Z')
+    ref2_fit = (359386220206.81140, 0.99999774862264112)
 
-    arr = (np.array(systime_array) * 100).astype(np.int64)
+    # System time converted from 100-ns steps to nominal 1-ns steps
+    arr = (np.array(systime_array) * 100)
 
-    arr[arr < 6e14] += (ref1_systime - ref2_systime) * 100 - (ref1_datetime64 - ref2_datetime64).astype(np.int64)
-    arr -= ref1_systime * 100
+    # Convert the system time to UTC using the best-fit parameters
+    utc_array = np.empty_like(arr, np.dtype('<M8[ns]'))
+    utc_array[arr >= 6e14] = ref1_datetime64 +\
+                             ((arr[arr >= 6e14] - ref1_fit[0]) / ref1_fit[1]).astype(np.int64).view(np.dtype('<m8[ns]'))
+    utc_array[arr < 6e14] = ref2_datetime64 +\
+                            ((arr[arr < 6e14] - ref2_fit[0]) / ref2_fit[1]).astype(np.int64).view(np.dtype('<m8[ns]'))
 
-    return ref1_datetime64 + arr.view(np.dtype('<m8[ns]'))
+    return utc_array
