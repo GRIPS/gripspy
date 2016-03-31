@@ -9,7 +9,7 @@ import numpy as np
 __all__ = ['oeb2utc']
 
 
-def oeb2utc(systime_array):
+def oeb2utc(systime_array, seconds_of_gps_lag=6):
     """Converts 6-byte system time (AKA gondola time) to UTC during the flight.  Note that the
     detectors report a higher-precision "event" time that must first be divided by 10 to convert
     to system time.
@@ -18,6 +18,9 @@ def oeb2utc(systime_array):
     ----------
     systime_array : `~numpy.ndarray`
         Array of system times (normally `~numpy.int64`)
+
+    seconds_of_gps_delay : int
+        Lag in seconds between GPS measurement and GPS recording (default: 6 seconds)
 
     Returns
     -------
@@ -31,19 +34,20 @@ def oeb2utc(systime_array):
     times, and this discontinuity is taken into account by the function.
     """
     # Best-fit parameters provided by Pascal on 2016 Mar 30
-    ref1_datetime64 = np.datetime64('2016-01-18T18:27:12Z')
+    ref1_datetime64 = np.datetime64('2016-01-18T18:27:54.4375Z')
     ref1_fit = (948121319866971.46, 0.99999868346236354)
-    ref2_datetime64 = np.datetime64('2016-01-25T08:25:36Z')
+    ref2_datetime64 = np.datetime64('2016-01-25T08:25:04.59375Z')
     ref2_fit = (359386220206.81140, 0.99999774862264112)
 
     # System time converted from 100-ns steps to nominal 1-ns steps
     arr = (np.array(systime_array) * 100)
 
     # Convert the system time to UTC using the best-fit parameters
+    # There are some type manipulations to avoid unnecessary element-wise mapping
     utc_array = np.empty_like(arr, np.dtype('<M8[ns]'))
     utc_array[arr >= 6e14] = ref1_datetime64 +\
                              ((arr[arr >= 6e14] - ref1_fit[0]) / ref1_fit[1]).astype(np.int64).view(np.dtype('<m8[ns]'))
     utc_array[arr < 6e14] = ref2_datetime64 +\
                             ((arr[arr < 6e14] - ref2_fit[0]) / ref2_fit[1]).astype(np.int64).view(np.dtype('<m8[ns]'))
 
-    return utc_array
+    return utc_array + np.timedelta64(seconds_of_gps_delay, 's')
