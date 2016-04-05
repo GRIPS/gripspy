@@ -4,13 +4,20 @@ Module for processing aspect data
 from __future__ import division, absolute_import, print_function
 
 from sys import stdout
+from operator import attrgetter
+import warnings
+import inspect
 
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import animation
+import pandas as pd
+from scipy.optimize import curve_fit
 from skimage.feature import match_template, peak_local_max
 from skimage.transform import warp
 from astropy.io import fits
+
+from ..util.time import oeb2utc
 
 
 __all__ = ['PYFrame', 'PYSequence', 'RFrame', 'RSequence']
@@ -193,6 +200,46 @@ class RFrame(Frame):
         except RuntimeError:
             raise RuntimeError("This file does not appear to be a valid frame from the roll camera")
 
+        self.midpoint = self._process()
+
+    def _process(self, plot=False):
+        """Fit the horizons"""
+        # For now, fit the whole thing
+        data = np.mean(self.data, 0)
+        left = np.min(np.flatnonzero(data[0:640] < np.mean(data[0:640])))
+        right = np.max(np.flatnonzero(data[640:] < np.mean(data[640:]))) + 640
+
+        subx = np.arange(left, right + 1)
+        guess = (639.5, 0.02, 0.04, 10)
+        try:
+            popt, pcov = curve_fit(RFrame.atmosphere_sym, subx, data[left:right+1], guess)
+        except RuntimeError:
+            warnings.warn_explicit("Could not automatically fit the horizon",
+                                   RuntimeWarning, __file__, inspect.currentframe().f_lineno)
+            return None
+
+        if plot:
+            print(popt)
+
+            plt.plot(data)
+            plt.plot(subx, RFrame.atmosphere_sym(subx, *popt))
+
+        return popt[0]
+
+    def plot_image(self, **imshow_kwargs):
+        """Plots the roll image, including annotations."""
+        return Frame.plot_image(self, **imshow_kwargs)
+
+    @staticmethod
+    def atmosphere_sym(x, midpoint, scale, amp, dc):
+        """Exponential atmospheric model with symmetry (i.e., hyperbolic cosine)"""
+        return amp * np.cosh(scale * (x - midpoint)) + dc
+
+    @staticmethod
+    def atmosphere_asym(x, midpoint, scale, amp1, amp2, dc):
+        """Exponential atmospheric model with asymmetry in normalization"""
+        return amp1 * np.exp(-scale * (x - midpoint)) + amp2 * np.exp(scale * (x - midpoint)) + dc
+
 
 class FrameSequence(list):
     """Base class for a sequence of camera frames"""
@@ -296,3 +343,12 @@ class RSequence(FrameSequence):
     def __init__(self, list_of_files):
         FrameSequence.__init__(self, list_of_files, frame_class=RFrame)
 
+    @property
+    def dataframe(self):
+        """Obtain a pandas DataFrame"""
+        return pd.DataFrame({'midpoint' : map(attrgetter('midpoint'), self)},
+                            index=oeb2utc(map(attrgetter('trigger_time'), self)))
+
+    def plot_midpoint(self, **dataframe_plot_kwargs):
+        """Plot the midpoints"""
+        self.dataframe.plot(**dataframe_plot_kwargs)
