@@ -9,7 +9,7 @@ import numpy as np
 __all__ = ['oeb2utc']
 
 
-def oeb2utc(systime_array, seconds_of_gps_lag=6):
+def oeb2utc(systime_array, seconds_of_gps_delay=6):
     """Converts 6-byte system time (AKA gondola time) to UTC during the flight.  Note that the
     detectors report a higher-precision "event" time that must first be divided by 10 to convert
     to system time.
