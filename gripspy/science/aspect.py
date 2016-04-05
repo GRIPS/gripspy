@@ -7,6 +7,7 @@ from sys import stdout
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import animation
 from skimage.feature import match_template, peak_local_max
 from skimage.transform import warp
 from astropy.io import fits
@@ -49,6 +50,7 @@ class Frame(object):
         with fits.open(filename) as f:
             if uid != None and f[0].header['CAMERA'] != uid:
                 raise RuntimeError
+            self.filename = filename
             self.header = f[0].header
             self.data = f[1].data.astype(np.uint8)
             self.trigger_time = f[0].header['GT_TRIG']
@@ -88,13 +90,13 @@ class Frame(object):
                 return (step, idx[0])
         return (1, 0)
 
-    def plot_image(self, **kwargs):
+    def plot_image(self, **imshow_kwargs):
         """Plots the camera frame, defaulting to no interpolation."""
-        imshow_args = {'cmap'   : 'gray',
-                       'extent' : [-0.5, NUM_COLS - 0.5, NUM_ROWS - 0.5, -0.5],
-                       'interpolation' : 'none'}
-        imshow_args.update(kwargs)
-        plt.imshow(self.data, **imshow_args)
+        args = {'cmap'   : 'gray',
+                'extent' : [-0.5, NUM_COLS - 0.5, NUM_ROWS - 0.5, -0.5],
+                'interpolation' : 'nearest'}
+        args.update(imshow_kwargs)
+        return plt.imshow(self.data, **args)
 
 
 class PYFrame(Frame):
@@ -154,7 +156,7 @@ class PYFrame(Frame):
 
         return fine_peaks, fiducials
 
-    def plot_image(self, **kwargs):
+    def plot_image(self, **imshow_kwargs):
         """Plots the pitch-yaw image, including Sun/fiducial detections."""
         if self.peaks:
             # Draw an X at the center of each Sun
@@ -172,7 +174,7 @@ class PYFrame(Frame):
             arr_fiducials = np.array(self.fiducials)
             plt.plot(arr_fiducials[:, 1], arr_fiducials[:, 0], 'b+')
 
-        Frame.plot_image(self, **kwargs)
+        return Frame.plot_image(self, **imshow_kwargs)
 
 
 class RFrame(Frame):
@@ -194,7 +196,68 @@ class RFrame(Frame):
 
 class FrameSequence(list):
     """Base class for a sequence of camera frames"""
-    pass
+    def __init__(self, list_of_files, frame_class=Frame):
+        for entry in list_of_files:
+            self.append(frame_class(entry))
+            stdout.write(".")
+
+        stdout.write("\n")
+
+    def animate(self, fps=4, fig=None, **imshow_kwargs):
+        """Return a matplotlib animation of the frame sequence.  Extra keyword arguments are passed on to
+        `matplotlib.pyplot.imshow`.
+
+        Parameters
+        ----------
+        fps : int
+            Number of frames per second for interactive display
+
+        fig : `matplotlib.figure.Figure`
+            If None, the current figure is used
+
+        Returns
+        -------
+        `matplotlib.animation.FuncAnimation`
+
+        Examples
+        --------
+        To save a matplotlib animation as an animated GIF:
+
+        >>> anim = framesequence.animate()
+        >>> anim.save('animation.gif', writer='imagemagick', fps=4)
+
+        On Windows, you may need to configure matplotlib to find `convert.exe`, e.g.:
+
+        >>> import matplotlib as mpl
+        >>> mpl.rcParams['animation.convert_path'] = 'C:\\Program Files\\ImageMagick-6.9.2-Q16\\convert.exe'
+
+        """
+        if fig is None:
+            fig = plt.gcf()
+
+        args = {'cmap'   : 'gray',
+                'extent' : [-0.5, NUM_COLS - 0.5, NUM_ROWS - 0.5, -0.5],
+                'clim' : (0, 256),
+                'interpolation' : 'nearest'}
+        args.update(imshow_kwargs)
+        im = plt.imshow(np.zeros_like(self[0].data), **args)
+
+        iterator = self.__iter__()
+
+        # Although this function does nothing, otherwise matplotlib "burns" the first frame for initialization
+        def init():
+            pass
+
+        # Update with the next frame's data
+        def update_im(frame, im):
+            im.set_data(frame.data)
+            plt.gca().set_title(frame.filename)
+            return im,
+
+        ani = animation.FuncAnimation(fig, update_im, iterator, fargs=(im,), init_func=init,
+                                      repeat=False, interval=1000 / fps)
+
+        return ani
 
 
 class PYSequence(FrameSequence):
@@ -206,13 +269,7 @@ class PYSequence(FrameSequence):
         List of FITS files with pitch-yaw images
     """
     def __init__(self, list_of_files):
-        FrameSequence.__init__(self)
-
-        for entry in list_of_files:
-            self.append(PYFrame(entry))
-            stdout.write(".")
-
-        stdout.write("\n")
+        FrameSequence.__init__(self, list_of_files, frame_class=PYFrame)
 
     def plot_centers(self, **kwargs):
         """Plot the center of the brightest Sun across the entire image sequence"""
@@ -237,7 +294,5 @@ class RSequence(FrameSequence):
         List of FITS files with roll images
     """
     def __init__(self, list_of_files):
-        FrameSequence.__init__(self)
+        FrameSequence.__init__(self, list_of_files, frame_class=RFrame)
 
-        for entry in list_of_files:
-            self.append(RFrame(entry))
