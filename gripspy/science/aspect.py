@@ -91,7 +91,7 @@ class Frame(object):
         dead1 = (self.data == 0).sum(1) == NUM_COLS
         for step in range(decimation_range[0], decimation_range[1] + 1):
             sub_rows = NUM_ROWS // step
-            dead2 = dead1[:sub_rows * step].reshape(sub_rows, step).sum(0) == sub_rows
+            dead2 = dead1[:sub_rows * step].reshape(sub_rows, step).max(0)
             idx = np.flatnonzero(~dead2)
             if len(idx) == 1:
                 return (step, idx[0])
