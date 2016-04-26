@@ -62,15 +62,6 @@ class Frame(object):
             self.data = f[1].data.astype(np.uint8)
             self.trigger_time = f[0].header['GT_TRIG']
         self.decimation = self._detect_decimation(decimation_range)
-        self.data = self.data[self.decimation[1]::self.decimation[0], :]
-
-        if self.decimation == (1, 0):
-            self.image = self.data
-        else:
-            transformation = np.matrix([[1, 0, 0],
-                                        [0, 1. / self.decimation[0], self.decimation[1] / self.decimation[0]],
-                                        [0, 0, 1]])
-            self.image = warp(self.data, transformation, output_shape=(NUM_ROWS, NUM_COLS))
 
     def _detect_decimation(self, decimation_range):
         """Detects the decimation level of the camera frame.
@@ -103,7 +94,18 @@ class Frame(object):
                 'extent' : [-0.5, NUM_COLS - 0.5, NUM_ROWS - 0.5, -0.5],
                 'interpolation' : 'nearest'}
         args.update(imshow_kwargs)
-        return plt.imshow(self.data, **args)
+        return plt.imshow(self.image, **args)
+
+    @property
+    def image(self):
+        if self.decimation == (1, 0):
+            return self.data
+        else:
+            transformation = np.matrix([[1, 0, 0],
+                                        [0, 1. / self.decimation[0], -self.decimation[1] / self.decimation[0]],
+                                        [0, 0, 1]])
+            return warp(self.data[self.decimation[1]::self.decimation[0], :], transformation,
+                        output_shape=(NUM_ROWS, NUM_COLS), mode='edge', preserve_range=True)
 
 
 class PYFrame(Frame):
@@ -205,7 +207,7 @@ class RFrame(Frame):
     def _process(self, plot=False):
         """Fit the horizons"""
         # For now, fit the whole thing
-        data = np.mean(self.data, 0)
+        data = np.mean(self.data[self.decimation[1]::self.decimation[0], :], 0)
         left = np.min(np.flatnonzero(data[0:640] < np.mean(data[0:640])))
         right = np.max(np.flatnonzero(data[640:] < np.mean(data[640:]))) + 640
 
@@ -287,7 +289,7 @@ class FrameSequence(list):
                 'clim' : (0, 256),
                 'interpolation' : 'nearest'}
         args.update(imshow_kwargs)
-        im = plt.imshow(np.zeros_like(self[0].data), **args)
+        im = plt.imshow(np.zeros_like(self[0].image), **args)
 
         iterator = self.__iter__()
 
@@ -297,7 +299,7 @@ class FrameSequence(list):
 
         # Update with the next frame's data
         def update_im(frame, im):
-            im.set_data(frame.data)
+            im.set_data(frame.image)
             plt.gca().set_title(frame.filename)
             return im,
 
@@ -305,6 +307,17 @@ class FrameSequence(list):
                                       repeat=False, interval=1000 / fps)
 
         return ani
+
+    def compact(self):
+        """Crude compaction of a decimated sequence"""
+        for i in range(len(self) - 1, 0, -1):
+            if (self[i].decimation[0] == self[i-1].decimation[0]) and\
+               (self[i].decimation[1] > self[i-1].decimation[1]):
+                self[i-1].data += self[i].data
+                self.pop(i)
+            else:
+                self[i].decimation = (1, 0)
+        self[0].decimation = (1, 0)
 
 
 class PYSequence(FrameSequence):
