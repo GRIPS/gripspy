@@ -4,7 +4,7 @@ Module for processing aspect data
 from __future__ import division, absolute_import, print_function
 
 from sys import stdout
-from operator import attrgetter
+from operator import attrgetter, itemgetter
 import warnings
 import inspect
 
@@ -18,6 +18,7 @@ from skimage.transform import warp
 from astropy.io import fits
 
 from ..util.time import oeb2utc
+from ..util.fitting import parapeak
 
 
 __all__ = ['PYFrame', 'PYSequence', 'RFrame', 'RSequence']
@@ -139,15 +140,18 @@ class PYFrame(Frame):
 
         for coarse_peak in coarse_peaks:
             # For each coarse detection, do a detection at the full resolution
+            if coarse_peak[0] < 11 or coarse_peak[0] > 84 or coarse_peak[1] < 11 or coarse_peak[1] > 116:
+                break
             sub_image = self.image[coarse_peak[0] * 10 - 110:coarse_peak[0] * 10 + 111,
                                    coarse_peak[1] * 10 - 110:coarse_peak[1] * 10 + 111]
             match = match_template(sub_image, template_sun, pad_input=True)
             peak = peak_local_max(match, threshold_abs=0.9, num_peaks=1)
             if len(peak) > 0:
                 peak = peak[0]
+                peak_r, peak_c = parapeak(match[peak[0] - 1:peak[0] + 2, peak[1] - 1:peak[1] + 2])
                 peak += coarse_peak * 10 - 110
 
-                fine_peaks.append(tuple(peak))
+                fine_peaks.append((peak[0] + peak_r, peak[1] + peak_c))
 
                 #FIXME: need a more robust estimate of the strength of each peak
                 strength.append(self.image[peak[0], peak[1]])
@@ -157,8 +161,10 @@ class PYFrame(Frame):
                                        template_fiducial, pad_input=True)
                 fids = peak_local_max(match, threshold_abs=0.8)
                 for fid in fids:
+                    fid_r, fid_c = parapeak(match[fid[0] - 1:fid[0] + 2, fid[1] - 1:fid[1] + 2])
                     fid += peak - 60
-                    fiducials.append(tuple(fid))
+
+                    fiducials.append((fid[0] + fid_r, fid[1] + fid_c))
 
         # Sort the peaks in order of decreasing strength
         fine_peaks = [peak for (strength, peak) in sorted(zip(strength, fine_peaks), reverse=True)]
@@ -331,18 +337,17 @@ class PYSequence(FrameSequence):
     def __init__(self, list_of_files):
         FrameSequence.__init__(self, list_of_files, frame_class=PYFrame)
 
-    def plot_centers(self, **kwargs):
+    @property
+    def dataframe(self):
+        """Obtain a pandas DataFrame"""
+        center = [x.peaks[0] for x in self]
+        return pd.DataFrame({'center_x' : map(itemgetter(1), center),
+                             'center_y' : map(itemgetter(0), center)},
+                            index=oeb2utc(map(attrgetter('trigger_time'), self)))
+
+    def plot_centers(self, **dataframe_plot_kwargs):
         """Plot the center of the brightest Sun across the entire image sequence"""
-        time = []
-        center_y = []
-        center_x = []
-        for frame in self:
-            if frame.peaks:
-                time.append(frame.trigger_time)
-                center_x.append(frame.peaks[0][1])
-                center_y.append(frame.peaks[0][0])
-        plt.plot(time, center_x, label='X (pixels)')
-        plt.plot(time, center_y, label='Y (pixels)')
+        return self.dataframe.plot(**dataframe_plot_kwargs)
 
 
 class RSequence(FrameSequence):
@@ -364,4 +369,4 @@ class RSequence(FrameSequence):
 
     def plot_midpoint(self, **dataframe_plot_kwargs):
         """Plot the midpoints"""
-        self.dataframe.plot(**dataframe_plot_kwargs)
+        return self.dataframe.plot(**dataframe_plot_kwargs)
