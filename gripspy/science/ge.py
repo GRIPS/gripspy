@@ -217,7 +217,7 @@ class GeData(object):
         plt.semilogy()
 
     def plot_spatial_spectrum(self, side):
-        """Plot the spatial spectrum
+        """Plot the spectrum versus channel as a 2D image
 
         Parameters
         ----------
@@ -225,7 +225,7 @@ class GeData(object):
             0 for LV side, 1 for HV side
         """
         s_side = self.s_lv if side == 0 else self.s_hv
-        plt.hist2d(s_side, self.c[self.s, s_side].A1, bins=[np.arange(side*256, (side+1)*256, 1), np.arange(-128, 2048, 8)], cmap='gray')
+        plt.hist2d(s_side, self.c[self.s, s_side].A1, bins=[np.arange(side*256, (side+1)*256+1), np.arange(-128, 2048, 8)], cmap='gray')
         plt.title("CC{0} {1} side".format(self.detector, "LV" if side == 0 else "HV"))
 
     def plot_spectrum(self, asiccha, binning=np.arange(0, 3584, 8)):
