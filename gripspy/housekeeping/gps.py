@@ -82,8 +82,10 @@ class GPSData(object):
 
                 # Convert pressure to millibars
                 self.pressure = pressure_low * 0.327 - 10.76
-                self.pressure[pressure_mid < 3165] = pressure_mid * 0.032 - 1.29
-                self.pressure[pressure_high < 3383] = pressure_high * 0.003 - 0.149
+                use_mid = pressure_mid < 3165
+                self.pressure[use_mid] = pressure_mid[use_mid] * 0.032 - 1.29
+                use_high = pressure_high < 3383
+                self.pressure[use_high] = pressure_high[use_high] * 0.003 - 0.149
 
                 print("Total packets: {0}".format(count))
             else:
