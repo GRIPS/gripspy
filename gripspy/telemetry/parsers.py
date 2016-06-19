@@ -3,6 +3,8 @@ Module for parsing a telemetry packet
 """
 from __future__ import division, absolute_import, print_function
 
+import struct
+
 import numpy as np
 
 
@@ -71,6 +73,9 @@ def parser(packet, filter_systemid=None, filter_tmtype=None):
         # Counter packet
         if header['tmtype'] == 0x81:
             return bgo_counter(buf, header)
+    # GPS packet
+    elif header['systemid'] == 0x05 and header['tmtype'] == 0x02:
+        return gps(buf, header)
 
 
 def ge_event(buf, out):
@@ -265,5 +270,40 @@ def bgo_counter(buf, out):
     out['veto_count'] = buf[index] \
                         | buf[index + 1] << 8 \
                         | buf[index + 2] << 16
+
+    return out
+
+
+def gps(buf, out):
+    """Parse a GPS packet from the flight computer (SystemID 0x05 and TmType 0x02)
+    """
+    if not (out['systemid'] == 0x05 and out['tmtype'] == 0x02):
+        raise ValueError
+
+    index = INDEX_PAYLOAD
+
+    stubs = ['user', 'sip1', 'sip2']
+
+    for stub in stubs:
+        out[stub+'_latitude']   = struct.unpack('<f', buf[index      : index + 4 ])[0]
+        out[stub+'_longitude']  = struct.unpack('<f', buf[index + 4  : index + 8 ])[0]
+        out[stub+'_altitude']   = struct.unpack('<f', buf[index + 8  : index + 12])[0]
+        out[stub+'_timeofweek'] = struct.unpack('<f', buf[index + 12 : index + 16])[0] # seconds since Sunday 12:00 AM
+        out[stub+'_week']       = struct.unpack('<H', buf[index + 16 : index + 18])[0] # week #1 starts 1980 January 6
+        out[stub+'_offset']     = struct.unpack('<f', buf[index + 18 : index + 22])[0] # subtract seconds to obtain UTC
+
+        out[stub+'_pressure_low']  = struct.unpack('<H', buf[index + 22 : index + 24])[0]
+        out[stub+'_pressure_mid']  = struct.unpack('<H', buf[index + 24 : index + 26])[0] # use when below 3165
+        out[stub+'_pressure_high'] = struct.unpack('<H', buf[index + 26 : index + 28])[0] # use when below 3383
+
+        out[stub+'_status1'] = buf[index + 28]
+        out[stub+'_status2'] = buf[index + 29]
+        out[stub+'_good']    = buf[index + 30]
+
+        index += 31
+
+    out['gps_source'] = buf[index]
+    out['auto_update_time'] = bool(buf[index + 1])
+    out['auto_sync'] = bool(buf[index + 1])
 
     return out
