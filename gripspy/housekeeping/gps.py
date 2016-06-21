@@ -8,6 +8,10 @@ import pickle
 import gzip
 
 import numpy as np
+import astropy.units as u
+from astropy.units import cds
+u.add_enabled_units([cds.mbar])
+from astropy.coordinates import Latitude, Longitude
 
 from ..telemetry import parser_generator
 
@@ -70,9 +74,9 @@ class GPSData(object):
 
             if count > 0:
                 self.systime = np.hstack(self.systime)
-                self.latitude = np.hstack(self.latitude)
-                self.longitude = np.hstack(self.longitude)
-                self.altitude = np.hstack(self.altitude)
+                self.latitude = Latitude(self.latitude, 'deg')
+                self.longitude = Longitude(self.longitude, 'deg', wrap_angle=180 * u.deg)
+                self.altitude = u.Quantity(self.altitude, 'm').to('km')
 
                 self.utc_time = np.hstack(self.utc_time)
 
@@ -86,6 +90,8 @@ class GPSData(object):
                 self.pressure[use_mid] = pressure_mid[use_mid] * 0.032 - 1.29
                 use_high = pressure_high < 3383
                 self.pressure[use_high] = pressure_high[use_high] * 0.003 - 0.149
+
+                self.pressure = u.Quantity(self.pressure, 'mbar')
 
                 print("Total packets: {0}".format(count))
             else:
