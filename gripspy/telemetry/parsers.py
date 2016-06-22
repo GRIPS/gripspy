@@ -76,6 +76,14 @@ def parser(packet, filter_systemid=None, filter_tmtype=None):
     # GPS packet
     elif header['systemid'] == 0x05 and header['tmtype'] == 0x02:
         return gps(buf, header)
+    # Pointing packet
+    elif header['systemid'] == 0x03:
+        # FC->PCSC packet
+        if header['tmtype'] == 0x02:
+            return fc2pcsc(buf, header)
+        # PCSC->FC packet
+        if header['tmtype'] == 0x03:
+            return pcsc2fc(buf, header)
 
 
 def ge_event(buf, out):
@@ -305,5 +313,40 @@ def gps(buf, out):
     out['gps_source'] = buf[index]
     out['auto_update_time'] = bool(buf[index + 1])
     out['auto_sync'] = bool(buf[index + 1])
+
+    return out
+
+
+def fc2pcsc(buf, out):
+    """Parse a FC->PCSC packet (SystemID 0x03 and TmType 0x02)
+    """
+    if not (out['systemid'] == 0x03 and out['tmtype'] == 0x02):
+        raise ValueError
+
+    index = INDEX_PAYLOAD
+
+    as_floats = np.fromstring(str(buf[index + 2:]), np.float32)
+
+    return out
+
+
+def pcsc2fc(buf, out):
+    """Parse a PCSC->FC packet (SystemID 0x03 and TmType 0x03)
+    """
+    if not (out['systemid'] == 0x03 and out['tmtype'] == 0x03):
+        raise ValueError
+
+    index = INDEX_PAYLOAD
+
+    as_floats = np.fromstring(str(buf[index:]), np.float32)
+
+    out['v_x'] = as_floats[0]
+    out['v_y'] = as_floats[1]
+    out['v_sum'] = as_floats[2]
+
+    out['elevation_ae'] = as_floats[3]
+    out['elevation_ie'] = as_floats[6]
+
+    out['solar_elevation'] = as_floats[7]
 
     return out

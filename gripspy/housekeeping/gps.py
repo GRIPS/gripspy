@@ -118,7 +118,7 @@ class GPSData(object):
         ----------
         save_file : str
             The name of the save file to create.  If none is provided, the default is the name of
-            the telemetry file with the extension ".bgoe.pgz" appended.
+            the telemetry file with the extension ".gps.pgz" appended.
 
         """
         if save_file is None:
