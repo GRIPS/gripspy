@@ -65,8 +65,9 @@ Assuming that you are using Python 2.7, here are the steps:
      compiler=msvc
 
 You should now be able to build extensions.
-If these steps don't look work, or you are using a different version of Python,
-`this page <https://github.com/cython/cython/wiki/CythonExtensionsOnWindows>`_ has useful information.
+If these steps don't work for you, or you are using a different version of Python,
+`this page <https://github.com/cython/cython/wiki/CythonExtensionsOnWindows>`_ or
+`this page <https://wiki.python.org/moin/WindowsCompilers>`_ may be helpful.
 
 Installation
 ------------
