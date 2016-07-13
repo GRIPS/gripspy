@@ -1,0 +1,7 @@
+Housekeeping
+============
+
+.. toctree::
+
+   gps
+   pointing

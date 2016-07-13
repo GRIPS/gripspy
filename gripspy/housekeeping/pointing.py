@@ -32,8 +32,7 @@ class PointingData(object):
 
     Notes
     -----
-    Trusts the "user" GPS information
-    Averages the SIP1 and SIP2 pressure information
+    This implementation is still incomplete!
     """
     def __init__(self, telemetry_file=None, save_file=None):
         if telemetry_file is not None:

@@ -8,5 +8,6 @@ Code reference for gripspy
    :maxdepth: 2
 
    science/index.rst
+   housekeeping/index.rst
    telemetry
    util
