@@ -36,7 +36,7 @@ The build environment for C code is a bit trickier to set up on Windows than on 
 Assuming that you are using Python 2.7, here are the steps:
 
 * Install `Microsoft Visual C++ Compiler for Python 2.7 <http://www.microsoft.com/en-us/download/details.aspx?id=44266>`_
-* Patch `C:\yourpythoninstall\Lib\distutils\msvc9compiler.py` by adding the following highlighted lines at the top
+* Patch `C:\\yourpythoninstall\\Lib\\distutils\\msvc9compiler.py` by adding the following highlighted lines at the top
   of the `find_vcvarsall()` function:
 
   .. code-block:: python
@@ -57,7 +57,7 @@ Assuming that you are using Python 2.7, here are the steps:
          if os.path.isfile(vcpath): return vcpath
          ...
 
-* Create a file `distutils.cfg` in `C:\yourpythoninstall\Lib\distutils` with the following:
+* Create a file `distutils.cfg` in `C:\\yourpythoninstall\\Lib\\distutils\\` with the following:
 
   .. code-block:: none
 
