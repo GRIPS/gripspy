@@ -190,14 +190,19 @@ class GeData(object):
                  bins=binning, histtype='step', label='CC{0}'.format(self.detector))
         plt.xlabel("Nanoseconds")
         plt.title("CC{0} HV time minus LV time (i.e., left is HV side)".format(self.detector))
+        return plt.gca()
 
-    def plot_hitmap(self):
+    def plot_hitmap(self, **imshow_kwargs):
         """Plot the hitmap of single-trigger events"""
-        plt.imshow(self.hitmap, origin='lower', cmap='gray')
+        args = {'origin' : 'lower',
+                'cmap' : 'gray'}
+        args.update(imshow_kwargs)
+        plt.imshow(self.hitmap, **args)
         plt.title("CC{0}".format(self.detector))
         plt.xlabel("LV (ASICs 1/3 to 0/2)")
         plt.ylabel("HV (ASICs 4/6 to 5/7)")
         plt.colorbar()
+        return plt.gca()
 
     def plot_multiple_trigger_veto(self, side):
         """Plot the distribution of multiple-trigger events and veto information
@@ -215,18 +220,25 @@ class GeData(object):
         plt.title("CC{0} {1} side".format(self.detector, "LV" if side == 0 else "HV"))
         plt.legend()
         plt.semilogy()
+        return plt.gca()
 
-    def plot_spatial_spectrum(self, side):
+    def plot_spatial_spectrum(self, side, binning=np.arange(-128, 2048, 8), **hist2d_kwargs):
         """Plot the spectrum versus channel as a 2D image
 
         Parameters
         ----------
         side : 0 or 1
             0 for LV side, 1 for HV side
+        binning : array-like
+            The binning to use for the underlying data
         """
         s_side = self.s_lv if side == 0 else self.s_hv
-        plt.hist2d(s_side, self.c[self.s, s_side].A1, bins=[np.arange(side*256, (side+1)*256+1), np.arange(-128, 2048, 8)], cmap='gray')
+        args = {'bins' : [np.arange(side*256, (side+1)*256+1), binning],
+                'cmap' : 'gray'}
+        args.update(hist2d_kwargs)
+        plt.hist2d(s_side, self.c[self.s, s_side].A1, **args)
         plt.title("CC{0} {1} side".format(self.detector, "LV" if side == 0 else "HV"))
+        return plt.gca()
 
     def plot_spectrum(self, asiccha, binning=np.arange(0, 3584, 8)):
         """Plot the raw spectrum for a specified channel
@@ -249,6 +261,7 @@ class GeData(object):
         plt.legend()
         plt.title("Raw ADC spectra for CC{0}/A{1}-{2}".format(self.detector, *divmod(index, 64)))
         plt.ylim(0, np.max(val))
+        return plt.gca()
 
     def plot_subtracted_spectrum(self, asiccha, binning=np.arange(-128, 2048, 8)):
         """Plot the common-mode-subtracted spectrum for a specified channel
@@ -269,6 +282,7 @@ class GeData(object):
         plt.hist(self.c[self.s, index][self.t[self.s, index].nonzero()].A1, bins=binning, histtype='step', color='k', label='Single triggers')
         plt.legend()
         plt.title("Common-mode-subtracted ADC spectra for CC{0}/A{1}-{2}".format(self.detector, *divmod(index, 64)))
+        return plt.gca()
 
 
 def accumulate(f, cc_number, max_events=10000, verbose=False):
