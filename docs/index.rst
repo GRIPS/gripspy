@@ -20,7 +20,7 @@ Prerequisites
 -------------
 This package depends on:
 
-* Python 2.7 (untested on Python 3.x)
+* Python 3.5 or 2.7 (untested on other versions)
 * NumPy
 * SciPy
 * matplotlib
@@ -32,42 +32,47 @@ However, rather than installing these packages individually, it is highly recomm
 instead use a scientific Python distribution (e.g., `Anaconda <https://www.continuum.io/downloads>`_),
 which will include useful packages such as Jupyter Notebook (formerly IPython Notebook).
 
-The build environment for C code is a bit trickier to set up on Windows than on the other platforms.
-Assuming that you are using Python 2.7, here are the steps:
+The build environment for C code is a bit trickier to set up on Windows than on the other platforms:
 
-* Install `Microsoft Visual C++ Compiler for Python 2.7 <http://www.microsoft.com/en-us/download/details.aspx?id=44266>`_
-* Patch `C:\\yourpythoninstall\\Lib\\distutils\\msvc9compiler.py` by adding the following highlighted lines at the top
-  of the `find_vcvarsall()` function:
+* Python 3.5:
 
-  .. code-block:: python
-     :emphasize-lines: 8-13
+  * Install `Microsoft Visual C++ Build Tools 2015 <http://landinghub.visualstudio.com/visual-cpp-build-tools>`_ (check both Windows 8.1 SDK and Windows 10 SDK)
 
-     def find_vcvarsall(version):
-         """Find the vcvarsall.bat file
+* Python 2.7:
 
-         At first it tries to find the productdir of VS 2008 in the registry. If
-         that fails it falls back to the VS90COMNTOOLS env var.
-         """
-         vsbase = VS_BASE % version
-         vcpath = os.environ['ProgramFiles']
-         vcpath = os.path.join(vcpath, 'Common Files', 'Microsoft',
-             'Visual C++ for Python', '9.0', 'vcvarsall.bat')
-         if os.path.isfile(vcpath): return vcpath
-         vcpath = os.path.join(os.environ['LOCALAPPDATA'], 'Programs', 'Common', 'Microsoft', 'Visual C++ for Python', '9.0', 'vcvarsall.bat')
-         if os.path.isfile(vcpath): return vcpath
-         ...
+  * Install `Microsoft Visual C++ Compiler for Python 2.7 <http://www.microsoft.com/en-us/download/details.aspx?id=44266>`_
+  * Patch `C:\\yourpythoninstall\\Lib\\distutils\\msvc9compiler.py` by adding the following highlighted lines at the top
+    of the `find_vcvarsall()` function:
 
-* Create a file `distutils.cfg` in `C:\\yourpythoninstall\\Lib\\distutils\\` with the following:
+    .. code-block:: python
+       :emphasize-lines: 8-13
 
-  .. code-block:: none
+       def find_vcvarsall(version):
+           """Find the vcvarsall.bat file
 
-     [build]
-     compiler=msvc
+           At first it tries to find the productdir of VS 2008 in the registry. If
+           that fails it falls back to the VS90COMNTOOLS env var.
+           """
+           vsbase = VS_BASE % version
+           vcpath = os.environ['ProgramFiles']
+           vcpath = os.path.join(vcpath, 'Common Files', 'Microsoft',
+               'Visual C++ for Python', '9.0', 'vcvarsall.bat')
+           if os.path.isfile(vcpath): return vcpath
+           vcpath = os.path.join(os.environ['LOCALAPPDATA'], 'Programs', 'Common', 'Microsoft', 'Visual C++ for Python', '9.0', 'vcvarsall.bat')
+           if os.path.isfile(vcpath): return vcpath
+           ...
+
+  * Create a file `distutils.cfg` in `C:\\yourpythoninstall\\Lib\\distutils\\` with the following:
+
+    .. code-block:: none
+
+       [build]
+       compiler=msvc
 
 You should now be able to build extensions.
 If these steps don't work for you, or you are using a different version of Python,
 `this page <https://github.com/cython/cython/wiki/CythonExtensionsOnWindows>`_ or
-`this page <https://wiki.python.org/moin/WindowsCompilers>`_ may be helpful.
+`this other page <https://wiki.python.org/moin/WindowsCompilers>`_ may be helpful.
 
 Installation
 ------------

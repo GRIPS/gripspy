@@ -18,7 +18,7 @@ setup(
                       'cython',
                       'scikit-image',
                       'astropy'],
-    ext_modules = cythonize(ext_modules, annotate=True),
+    ext_modules = cythonize(ext_modules, annotate=True, compiler_directives={'embedsignature': True}),
     url='',
     license='See LICENSE.txt',
     description='',
