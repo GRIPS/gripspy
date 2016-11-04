@@ -38,7 +38,7 @@ def packet_generator(f, verbose=False):
             print("No bytes to read, stopping")
             break
 
-        if first_byte == '\x90':
+        if first_byte == b'\x90':
             second_byte = f.read(1)
 
             if not second_byte:
@@ -46,8 +46,8 @@ def packet_generator(f, verbose=False):
                 break
 
             # If there is no sync word, move pointer appropriately for next read
-            if second_byte != '\xeb':
-                if second_byte == '\x90':
+            if second_byte != b'\xeb':
+                if second_byte == b'\x90':
                     f.seek(-1, 1)
                 continue
 
@@ -59,15 +59,16 @@ def packet_generator(f, verbose=False):
                 break
 
             # Extract the payload length from the header
-            packet = '\x90\xeb' + f.read(14)
-            length = ord(packet[6]) | ord(packet[7]) << 8
+            packet = bytearray(b'\x90\xeb' + f.read(14))
+            length = packet[6] | packet[7] << 8
 
             if remaining_bytes >= 16 + length:
-                packet = bytearray(packet + f.read(length))
+                packet = packet + bytearray(f.read(length))
 
                 claimed_checksum = packet[2] | packet[3] << 8
                 packet[2:4] = [0, 0]
-                if claimed_checksum == crc16(packet):
+                calculated_checksum = crc16(packet)
+                if claimed_checksum == calculated_checksum:
                     if verbose:
                         if (sync_word_position + length) >= ((percent_completed + 1) / 100.) * end_of_file:
                             percent_completed += 1
@@ -75,6 +76,7 @@ def packet_generator(f, verbose=False):
                     yield packet
                 else:
                     f.seek(sync_word_position + 2)
+                    print("Invalid checksum: {0} != {1}".format(claimed_checksum, calculated_checksum))
 
             else:
                 print("Apparent payload length exceeds file length, skipping")

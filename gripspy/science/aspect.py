@@ -341,9 +341,9 @@ class PYSequence(FrameSequence):
     def dataframe(self):
         """Obtain a pandas DataFrame"""
         center = [x.peaks[0] for x in self]
-        return pd.DataFrame({'center_x' : map(itemgetter(1), center),
-                             'center_y' : map(itemgetter(0), center)},
-                            index=oeb2utc(map(attrgetter('trigger_time'), self)))
+        return pd.DataFrame({'center_x' : [z[1] for z in center],
+                             'center_y' : [z[0] for z in center]},
+                            index=oeb2utc([x.trigger_time for x in self]))
 
     def plot_centers(self, **dataframe_plot_kwargs):
         """Plot the center of the brightest Sun across the entire image sequence"""
@@ -364,8 +364,8 @@ class RSequence(FrameSequence):
     @property
     def dataframe(self):
         """Obtain a pandas DataFrame"""
-        return pd.DataFrame({'midpoint' : map(attrgetter('midpoint'), self)},
-                            index=oeb2utc(map(attrgetter('trigger_time'), self)))
+        return pd.DataFrame({'midpoint' : [x.midpoint for x in self]},
+                            index=oeb2utc([x.trigger_time for x in self]))
 
     def plot_midpoint(self, **dataframe_plot_kwargs):
         """Plot the midpoints"""

@@ -272,7 +272,7 @@ def bgo_counter(buf, out):
         index += 3
     out['channel_livetime'] = channel_livetime / 5.
 
-    out['channel_count'] = np.fromstring(str(buf[index:index + 96]), dtype=np.uint16).reshape((12, 4))
+    out['channel_count'] = np.fromstring(bytes(buf[index:index + 96]), dtype=np.uint16).reshape((12, 4))
     index += 96
 
     out['veto_count'] = buf[index] \
@@ -325,7 +325,7 @@ def fc2pcsc(buf, out):
 
     index = INDEX_PAYLOAD
 
-    as_floats = np.fromstring(str(buf[index + 2:]), np.float32)
+    as_floats = np.fromstring(bytes(buf[index + 2:]), np.float32)
 
     return out
 
@@ -338,7 +338,7 @@ def pcsc2fc(buf, out):
 
     index = INDEX_PAYLOAD
 
-    as_floats = np.fromstring(str(buf[index:]), np.float32)
+    as_floats = np.fromstring(bytes(buf[index:]), np.float32)
 
     out['v_x'] = as_floats[0]
     out['v_y'] = as_floats[1]

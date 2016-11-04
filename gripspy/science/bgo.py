@@ -4,6 +4,7 @@ Module for analyzing data from the BGO shields
 from __future__ import division, absolute_import, print_function
 
 import os
+from io import open
 import pickle
 import gzip
 
