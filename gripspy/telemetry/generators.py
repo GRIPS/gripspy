@@ -12,7 +12,7 @@ from ..util.checksum import crc16
 __all__ = ['packet_generator', 'parser_generator']
 
 
-def packet_generator(f, verbose=False):
+def packet_generator(f, verbose=False, raise_exceptions=False):
     """Generator that yields valid packets from a telemetry-file object.
     Packets that have invalid checksums are skipped past.
 
@@ -22,6 +22,8 @@ def packet_generator(f, verbose=False):
         e.g., an already open file object
     verbose : boolean
         If True, output the percentage of the file as a progress indicator
+    raise_exceptions : boolean
+        If True, raise exceptions (e.g., if an invalid checksum is encountered)
     """
     current_location = f.tell()
     f.seek(0, 2)
@@ -35,14 +37,16 @@ def packet_generator(f, verbose=False):
     while True:
         first_byte = f.read(1)
         if not first_byte:
-            print("No bytes to read, stopping")
+            if verbose:
+                print("No more bytes to read, stopping")
             break
 
         if first_byte == b'\x90':
             second_byte = f.read(1)
 
             if not second_byte:
-                print("Not enough bytes remaining for a sync word, stopping")
+                if verbose:
+                    print("Not enough bytes remaining for a sync word, stopping")
                 break
 
             # If there is no sync word, move pointer appropriately for next read
@@ -55,7 +59,8 @@ def packet_generator(f, verbose=False):
             remaining_bytes = end_of_file - sync_word_position
 
             if remaining_bytes < 16:
-                print("Not enough bytes remaining for a header, stopping")
+                if verbose:
+                    print("Not enough bytes remaining for a header, stopping")
                 break
 
             # Extract the payload length from the header
@@ -77,10 +82,15 @@ def packet_generator(f, verbose=False):
                 else:
                     f.seek(sync_word_position + 2)
                     print("Invalid checksum: {0} != {1}".format(claimed_checksum, calculated_checksum))
+                    if raise_exceptions:
+                        raise RuntimeError("Invalid checksum: {0} != {1}".format(claimed_checksum, calculated_checksum))
 
             else:
-                print("Apparent payload length exceeds file length, skipping")
                 f.seek(sync_word_position + 2)
+                if verbose:
+                    print("Apparent payload length exceeds file length, skipping")
+                if raise_exceptions:
+                    raise RuntimeError("Apparent payload length exceeds file length, skipping")
 
 
 def parser_generator(f, filter_systemid=None, filter_tmtype=None, verbose=False):

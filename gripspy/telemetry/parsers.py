@@ -20,6 +20,39 @@ INDEX_SYSTIME = 10
 INDEX_PAYLOAD = 16
 
 
+def parse_packet_header(packet):
+    """
+    Parse the header of a telemetry packet
+
+    Parameters
+    ----------
+    packet : bytearray-like
+        A full telemetry packet including the 16-byte header
+
+    Returns
+    -------
+    out : dict
+        The contents of the header of the telemetry packet
+    """
+    buf = bytearray(packet)
+
+    header = {'systemid' : buf[INDEX_SYSTEMID],
+              'tmtype'   : buf[INDEX_TMTYPE],
+              'length'   : buf[INDEX_LENGTH]
+                           | buf[INDEX_LENGTH + 1] << 8,
+              'counter'  : buf[INDEX_COUNTER]
+                           | buf[INDEX_COUNTER + 1] << 8,
+              'systime'  : buf[INDEX_SYSTIME]
+                           | buf[INDEX_SYSTIME + 1] << 8
+                           | buf[INDEX_SYSTIME + 2] << 16
+                           | buf[INDEX_SYSTIME + 3] << 24
+                           | buf[INDEX_SYSTIME + 4] << 32
+                           | buf[INDEX_SYSTIME + 5] << 40
+             }
+
+    return header
+
+
 def parser(packet, filter_systemid=None, filter_tmtype=None):
     """
     Parse a telemetry packet for its contents
