@@ -66,7 +66,7 @@ class GPSData(object):
                     # Convert time to UTC
                     self.utc_time.append(np.datetime64('1980-01-06T00:00:00Z') +\
                                          np.timedelta64(p['user_week'], 'W') +\
-                                         np.timedelta64(long((p['user_timeofweek'] - p['user_offset']) * 1e6), 'us'))
+                                         np.timedelta64(int((p['user_timeofweek'] - p['user_offset']) * 1e6), 'us'))
 
                     pressure_low.append((p['sip1_pressure_low'] + p['sip2_pressure_low']) / 2)
                     pressure_mid.append((p['sip1_pressure_mid'] + p['sip2_pressure_mid']) / 2)
