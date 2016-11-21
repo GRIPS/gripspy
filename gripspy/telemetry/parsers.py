@@ -20,6 +20,13 @@ INDEX_SYSTIME = 10
 INDEX_PAYLOAD = 16
 
 
+# A 256x256 list of lists for what parsing function to call based on SystemID and TmType
+# This registry is populated at the end of this module
+parser_registry = []
+for systemid in range(256):
+    parser_registry.append([None] * 256)
+
+
 def parse_packet_header(packet):
     """
     Parse the header of a telemetry packet
@@ -73,50 +80,16 @@ def parser(packet, filter_systemid=None, filter_tmtype=None):
     """
     buf = bytearray(packet)
 
-    header = {'systemid' : buf[INDEX_SYSTEMID],
-              'tmtype'   : buf[INDEX_TMTYPE],
-              'length'   : buf[INDEX_LENGTH]
-                           | buf[INDEX_LENGTH + 1] << 8,
-              'counter'  : buf[INDEX_COUNTER]
-                           | buf[INDEX_COUNTER + 1] << 8,
-              'systime'  : buf[INDEX_SYSTIME]
-                           | buf[INDEX_SYSTIME + 1] << 8
-                           | buf[INDEX_SYSTIME + 2] << 16
-                           | buf[INDEX_SYSTIME + 3] << 24
-                           | buf[INDEX_SYSTIME + 4] << 32
-                           | buf[INDEX_SYSTIME + 5] << 40
-             }
+    header = parse_packet_header(buf)
 
     if filter_systemid is not None and filter_systemid != header['systemid']: return
     if filter_tmtype is not None and filter_tmtype != header['tmtype']: return
 
-    # Card cage packet
-    if header['systemid'] & 0xF0 == 0x80:
-        # Event packet
-        if header['tmtype'] == 0xF3: 
-            return ge_event(buf, header)
-        # Raw event packet
-        elif header['tmtype'] == 0xF1 or header['tmtype'] == 0xF2:
-            return ge_raw_event(buf, header)
-    # Shield electronics packet
-    elif header['systemid'] == 0xB6:
-        # Event packet
-        if header['tmtype'] == 0x80 or header['tmtype'] == 0x82:
-            return bgo_event(buf, header)
-        # Counter packet
-        if header['tmtype'] == 0x81:
-            return bgo_counter(buf, header)
-    # GPS packet
-    elif header['systemid'] == 0x05 and header['tmtype'] == 0x02:
-        return gps(buf, header)
-    # Pointing packet
-    elif header['systemid'] == 0x03:
-        # FC->PCSC packet
-        if header['tmtype'] == 0x02:
-            return fc2pcsc(buf, header)
-        # PCSC->FC packet
-        if header['tmtype'] == 0x03:
-            return pcsc2fc(buf, header)
+    function = parser_registry[header['systemid']][header['tmtype']]
+    if function is not None:
+        return function(buf, header)
+    else:
+        return header
 
 
 def ge_event(buf, out):
@@ -383,3 +356,22 @@ def pcsc2fc(buf, out):
     out['solar_elevation'] = as_floats[7]
 
     return out
+
+
+# Populate the parser registry now that the functions are all defined
+
+# Card-cage packets
+for systemid in range(0x80, 0x90):
+    parser_registry[systemid][0xF1] = parser_registry[systemid][0xF2] = ge_raw_event
+    parser_registry[systemid][0xF3] = ge_event
+
+# Shield-electronics packets
+parser_registry[0xB6][0x80] = parser_registry[0xB6][0x82] = bgo_event
+parser_registry[0xB6][0x81] = bgo_counter
+
+# GPS packet
+parser_registry[0x05][0x02] = gps
+
+# PCSC packet
+parser_registry[0x03][0x02] = fc2pcsc
+parser_registry[0x03][0x03] = pcsc2fc
