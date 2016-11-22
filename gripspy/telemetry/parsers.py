@@ -8,7 +8,7 @@ import struct
 import numpy as np
 
 
-__all__ = ['parser']
+__all__ = ['parser', 'print_parsers']
 
 
 INDEX_CHECKSUM = 2
@@ -25,6 +25,17 @@ INDEX_PAYLOAD = 16
 parser_registry = []
 for systemid in range(256):
     parser_registry.append([None] * 256)
+
+
+def print_parsers():
+    """
+    Print the SystemID and TmType pairs that have a parsing function defined.
+    The parsing function may not be fully implemented.
+    """
+    for systemid in range(256):
+        for tmtype in range(256):
+            if parser_registry[systemid][tmtype] is not None:
+                print("0x{0:02x} 0x{1:02x} : {2}".format(systemid, tmtype, parser_registry[systemid][tmtype].func_name))
 
 
 def parse_packet_header(packet):
