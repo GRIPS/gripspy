@@ -1,6 +1,6 @@
 Telemetry
 =========
 
-.. autofunction:: gripspy.telemetry.inspect
-
-.. autofunction:: gripspy.telemetry.parser_generator
+.. automodule:: gripspy.telemetry
+   :members:
+   :undoc-members:
