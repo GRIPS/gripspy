@@ -121,7 +121,7 @@ class GeData(object):
 
         self._process_single_triggers()
 
-    def save(self, save_file=None):
+    def save(self, save_file=None, use_current_directory=False):
         """Save the parsed data for future reloading.
         The data is stored in gzip-compressed binary pickle format.
 
@@ -131,15 +131,21 @@ class GeData(object):
             The name of the save file to create.  If none is provided, the default is the name of
             the telemetry file with the extension ".ge?.pgz" appended if a single telemetry file
             is the source.
-
+        use_current_directory : bool
+            If True, remove any directory specification from `save_file`
         """
         if save_file is None:
             if type(self.filename) == str:
-                save_file = self.filename + ".ge{0}.pgz".format(self.detector)
+                to_save = self.filename + ".ge{0}.pgz".format(self.detector)
             else:
                 raise RuntimeError("The name for the save file needs to be explicitly specified here")
+        else:
+            to_save = save_file
 
-        with gzip.open(save_file, 'wb') as f:
+        if use_current_directory:
+            to_save = os.path.basename(to_save)
+
+        with gzip.open(to_save, 'wb') as f:
             pickle.dump({'filename' : self.filename,
                          'adc' : self.adc,
                          'cms' : self.cms,

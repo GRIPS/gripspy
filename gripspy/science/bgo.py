@@ -111,7 +111,7 @@ class BGOEventData(object):
         self.clock_source = np.hstack([self.clock_source, other.clock_source])
         self.clock_synced = np.hstack([self.clock_synced, other.clock_synced])
 
-    def save(self, save_file=None):
+    def save(self, save_file=None, use_current_directory=False):
         """Save the parsed data for future reloading.
         The data is stored in gzip-compressed binary pickle format.
 
@@ -121,14 +121,21 @@ class BGOEventData(object):
             The name of the save file to create.  If none is provided, the default is the name of
             the telemetry file with the extension ".bgoe.pgz" appended if a single telemetry file
             is the source.
+        use_current_directory : bool
+            If True, remove any directory specification from `save_file`
         """
         if save_file is None:
             if type(self.filename) == str:
-                save_file = self.filename + ".bgoe.pgz"
+                to_save = self.filename + ".bgoe.pgz"
             else:
                 raise RuntimeError("The name for the save file needs to be explicitly specified here")
+        else:
+            to_save = save_file
 
-        with gzip.open(save_file, 'wb') as f:
+        if use_current_directory:
+            to_save = os.path.basename(to_save)
+
+        with gzip.open(to_save, 'wb') as f:
             pickle.dump({'filename' : self.filename,
                          'event_time' : self.event_time,
                          'channel' : self.channel,
@@ -257,7 +264,7 @@ class BGOCounterData(object):
         self.channel_count = np.vstack([self.channel_count, other.channel_count])
         self.veto_count = np.hstack([self.veto_count, other.veto_count])
 
-    def save(self, save_file=None):
+    def save(self, save_file=None, use_current_directory=False):
         """Save the parsed data for future reloading.
         The data is stored in gzip-compressed binary pickle format.
 
@@ -267,14 +274,21 @@ class BGOCounterData(object):
             The name of the save file to create.  If none is provided, the default is the name of
             the telemetry file with the extension ".bgoc.pgz" appended if a single telemetry file
             is the source.
+        use_current_directory : bool
+            If True, remove any directory specification from `save_file`
         """
         if save_file is None:
             if type(self.filename) == str:
-                save_file = self.filename + ".bgoc.pgz"
+                to_save = self.filename + ".bgoc.pgz"
             else:
                 raise RuntimeError("The name for the save file needs to be explicitly specified here")
+        else:
+            to_save = save_file
 
-        with gzip.open(save_file, 'wb') as f:
+        if use_current_directory:
+            to_save = os.path.basename(to_save)
+
+        with gzip.open(to_save, 'wb') as f:
             pickle.dump({'filename' : self.filename,
                          'counter_time' : self.counter_time,
                          'total_livetime' : self.total_livetime,
