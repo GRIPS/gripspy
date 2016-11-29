@@ -7,6 +7,7 @@ import os
 from io import open
 import pickle
 import gzip
+from copy import deepcopy
 
 import numpy as np
 import scipy.sparse as sps
@@ -32,9 +33,9 @@ class GeData(object):
     ----------
     detector : int
         The detector number (0 to 5, usually)
-    telemetry_file : str
+    telemetry_file : str (or list)
         The name of the telemetry file to analyze.  If None is specified, a save file must be specified.
-    save_file : str
+    save_file : str (or list)
         The name of a save file from a telemetry file that was previously parsed.
 
     Notes
@@ -45,8 +46,12 @@ class GeData(object):
         self.detector = detector
 
         if telemetry_file is not None:
-            self.filename = telemetry_file
-            result = process(telemetry_file, detector, os.path.join(DIR, "cms", "cc{0}_1000".format(detector)))
+            if isinstance(telemetry_file, list):
+                self.filename = telemetry_file[0]
+            else:
+                self.filename = telemetry_file
+
+            result = process(self.filename, detector, os.path.join(DIR, "cms", "cc{0}_1000".format(detector)))
             self.adc = result[0]
             self.cms = result[1]
             self.delta_time = result[2]
@@ -54,8 +59,20 @@ class GeData(object):
             self.glitch = result[4]
             self.trigger = result[5]
             self.veto = result[6]
+
+            self._process_single_triggers()
+
+            if isinstance(telemetry_file, list):
+                for entry in telemetry_file[1:]:
+                    self.append(GeData(self.detector, entry))
+
         elif save_file is not None:
-            with gzip.open(save_file, 'rb') as f:
+            if isinstance(save_file, list):
+                to_open = save_file[0]
+            else:
+                to_open = save_file
+
+            with gzip.open(to_open, 'rb') as f:
                 saved = pickle.load(f)
                 self.filename = saved['filename']
                 self.adc = saved['adc']
@@ -65,9 +82,22 @@ class GeData(object):
                 self.glitch = saved['glitch']
                 self.trigger = saved['trigger']
                 self.veto = saved['veto']
+
+            self._process_single_triggers()
+
+            if isinstance(save_file, list):
+                for entry in save_file[1:]:
+                    self.append(GeData(self.detector, save_file=entry))
+
         else:
             raise RuntimeError("Either a telemetry file or a save file must be specified")
 
+    def __add__(self, other):
+        out = deepcopy(self)
+        out.append(other)
+        return out
+
+    def _process_single_triggers(self):
         self.single_triggers = np.flatnonzero(np.logical_and(self.trigger[:, 0:256].sum(1) == 1,
                                                              self.trigger[:, 256:512].sum(1) == 1).A1)
         if len(self.single_triggers) == 0:
@@ -77,6 +107,20 @@ class GeData(object):
         self.single_triggers_lv = self.trigger[self.single_triggers, 0:256].nonzero()[1]
         self.single_triggers_hv = self.trigger[self.single_triggers, 256:512].nonzero()[1] + 256
 
+    def append(self, other):
+        """Append the information in another GeData instance"""
+        self.filename = (self.filename if type(self.filename) == list else [self.filename]) +\
+                        (other.filename if type(other.filename) == list else [other.filename])
+        self.adc = sps.vstack([self.adc, other.adc])
+        self.cms = sps.vstack([self.cms, other.cms])
+        self.delta_time = sps.vstack([self.delta_time, other.delta_time])
+        self.event_time = np.hstack([self.event_time, self.event_time])
+        self.glitch = sps.vstack([self.glitch, other.glitch])
+        self.trigger = sps.vstack([self.trigger, other.trigger])
+        self.veto = sps.vstack([self.veto, other.veto])
+
+        self._process_single_triggers()
+
     def save(self, save_file=None):
         """Save the parsed data for future reloading.
         The data is stored in gzip-compressed binary pickle format.
@@ -85,11 +129,15 @@ class GeData(object):
         ----------
         save_file : str
             The name of the save file to create.  If none is provided, the default is the name of
-            the telemetry file with the extension ".ge?.pgz" appended.
+            the telemetry file with the extension ".ge?.pgz" appended if a single telemetry file
+            is the source.
 
         """
         if save_file is None:
-            save_file = self.filename + ".ge{0}.pgz".format(self.detector)
+            if type(self.filename) == str:
+                save_file = self.filename + ".ge{0}.pgz".format(self.detector)
+            else:
+                raise RuntimeError("The name for the save file needs to be explicitly specified here")
 
         with gzip.open(save_file, 'wb') as f:
             pickle.dump({'filename' : self.filename,
