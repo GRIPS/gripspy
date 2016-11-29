@@ -7,6 +7,7 @@ import os
 from io import open
 import pickle
 import gzip
+from copy import deepcopy
 
 import numpy as np
 import scipy.sparse as sps
@@ -79,6 +80,17 @@ class BGOEventData(object):
         else:
             raise RuntimeError("Either a telemetry file or a save file must be specified")
 
+    def __add__(self, other):
+        out = deepcopy(self)
+        out.filename = (self.filename if type(self.filename) == list else [self.filename]) +\
+                       (other.filename if type(other.filename) == list else [other.filename])
+        out.event_time = np.hstack([self.event_time, other.event_time])
+        out.channel = np.hstack([self.channel, other.channel])
+        out.level = np.hstack([self.level, other.level])
+        out.clock_source = np.hstack([self.clock_source, other.clock_source])
+        out.clock_synced = np.hstack([self.clock_synced, other.clock_synced])
+        return out
+
     def save(self, save_file=None):
         """Save the parsed data for future reloading.
         The data is stored in gzip-compressed binary pickle format.
@@ -87,11 +99,14 @@ class BGOEventData(object):
         ----------
         save_file : str
             The name of the save file to create.  If none is provided, the default is the name of
-            the telemetry file with the extension ".bgoe.pgz" appended.
-
+            the telemetry file with the extension ".bgoe.pgz" appended if a single telemetry file
+            is the source.
         """
         if save_file is None:
-            save_file = self.filename + ".bgoe.pgz"
+            if type(self.filename) == str:
+                save_file = self.filename + ".bgoe.pgz"
+            else:
+                raise RuntimeError("The name for the save file needs to be explicitly specified here")
 
         with gzip.open(save_file, 'wb') as f:
             pickle.dump({'filename' : self.filename,
@@ -191,6 +206,17 @@ class BGOCounterData(object):
         else:
             raise RuntimeError("Either a telemetry file or a save file must be specified")
 
+    def __add__(self, other):
+        out = deepcopy(self)
+        out.filename = (self.filename if type(self.filename) == list else [self.filename]) +\
+                       (other.filename if type(other.filename) == list else [other.filename])
+        out.counter_time = np.hstack([self.counter_time, other.counter_time])
+        out.total_livetime = np.hstack([self.total_livetime, other.total_livetime])
+        out.channel_livetime = np.vstack([self.channel_livetime, other.channel_livetime])
+        out.channel_count = np.vstack([self.channel_count, other.channel_count])
+        out.veto_count = np.hstack([self.veto_count, other.veto_count])
+        return out
+
     def save(self, save_file=None):
         """Save the parsed data for future reloading.
         The data is stored in gzip-compressed binary pickle format.
@@ -199,11 +225,14 @@ class BGOCounterData(object):
         ----------
         save_file : str
             The name of the save file to create.  If none is provided, the default is the name of
-            the telemetry file with the extension ".bgoc.pgz" appended.
-
+            the telemetry file with the extension ".bgoc.pgz" appended if a single telemetry file
+            is the source.
         """
         if save_file is None:
-            save_file = self.filename + ".bgoc.pgz"
+            if type(self.filename) == str:
+                save_file = self.filename + ".bgoc.pgz"
+            else:
+                raise RuntimeError("The name for the save file needs to be explicitly specified here")
 
         with gzip.open(save_file, 'wb') as f:
             pickle.dump({'filename' : self.filename,
