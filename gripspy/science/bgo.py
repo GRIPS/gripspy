@@ -27,9 +27,9 @@ class BGOEventData(object):
 
     Parameters
     ----------
-    telemetry_file : str
+    telemetry_file : str (or list)
         The name of the telemetry file to analyze.  If None is specified, a save file must be specified.
-    save_file : str
+    save_file : str (or list)
         The name of a save file from a telemetry file that was previously parsed.
 
     Notes
@@ -38,7 +38,10 @@ class BGOEventData(object):
     """
     def __init__(self, telemetry_file=None, save_file=None):
         if telemetry_file is not None:
-            self.filename = telemetry_file
+            if isinstance(telemetry_file, list):
+                self.filename = telemetry_file[0]
+            else:
+                self.filename = telemetry_file
             self.event_time = []
             self.channel = []
             self.level = []
@@ -47,7 +50,7 @@ class BGOEventData(object):
 
             count = 0
 
-            with open(telemetry_file, 'rb') as f:
+            with open(self.filename, 'rb') as f:
                 pg = parser_generator(f, filter_systemid=0xB6, filter_tmtype=0x82, verbose=True)
                 for p in pg:
                     count += len(p['event_time'])
@@ -68,8 +71,17 @@ class BGOEventData(object):
             else:
                 print("No events found")
 
+            if isinstance(telemetry_file, list):
+                for entry in telemetry_file[1:]:
+                    self.append(BGOEventData(entry))
+
         elif save_file is not None:
-            with gzip.open(save_file, 'rb') as f:
+            if isinstance(save_file, list):
+                to_open = save_file[0]
+            else:
+                to_open = save_file
+
+            with gzip.open(to_open, 'rb') as f:
                 saved = pickle.load(f)
                 self.filename = saved['filename']
                 self.event_time = saved['event_time']
@@ -77,19 +89,27 @@ class BGOEventData(object):
                 self.level = saved['level']
                 self.clock_source = saved['clock_source']
                 self.clock_synced = saved['clock_synced']
+
+            if isinstance(save_file, list):
+                for entry in save_file[1:]:
+                    self.append(BGOEventData(save_file=entry))
         else:
             raise RuntimeError("Either a telemetry file or a save file must be specified")
 
     def __add__(self, other):
         out = deepcopy(self)
-        out.filename = (self.filename if type(self.filename) == list else [self.filename]) +\
-                       (other.filename if type(other.filename) == list else [other.filename])
-        out.event_time = np.hstack([self.event_time, other.event_time])
-        out.channel = np.hstack([self.channel, other.channel])
-        out.level = np.hstack([self.level, other.level])
-        out.clock_source = np.hstack([self.clock_source, other.clock_source])
-        out.clock_synced = np.hstack([self.clock_synced, other.clock_synced])
+        out.append(other)
         return out
+
+    def append(self, other):
+        """Append the information in another BGOEventData instance"""
+        self.filename = (self.filename if type(self.filename) == list else [self.filename]) +\
+                        (other.filename if type(other.filename) == list else [other.filename])
+        self.event_time = np.hstack([self.event_time, other.event_time])
+        self.channel = np.hstack([self.channel, other.channel])
+        self.level = np.hstack([self.level, other.level])
+        self.clock_source = np.hstack([self.clock_source, other.clock_source])
+        self.clock_synced = np.hstack([self.clock_synced, other.clock_synced])
 
     def save(self, save_file=None):
         """Save the parsed data for future reloading.
@@ -157,14 +177,17 @@ class BGOCounterData(object):
 
     Parameters
     ----------
-    telemetry_file : str
+    telemetry_file : str (or list)
         The name of the telemetry file to analyze.  If None is specified, a save file must be specified.
-    save_file : str
+    save_file : str (or list)
         The name of a save file from a telemetry file that was previously parsed.
     """
     def __init__(self, telemetry_file=None, save_file=None):
         if telemetry_file is not None:
-            self.filename = telemetry_file
+            if isinstance(telemetry_file, list):
+                self.filename = telemetry_file[0]
+            else:
+                self.filename = telemetry_file
             self.counter_time = []
             self.total_livetime = []
             self.channel_livetime = []
@@ -173,7 +196,7 @@ class BGOCounterData(object):
 
             count = 0
 
-            with open(telemetry_file, 'rb') as f:
+            with open(self.filename, 'rb') as f:
                 pg = parser_generator(f, filter_systemid=0xB6, filter_tmtype=0x81, verbose=True)
                 for p in pg:
                     count += 1
@@ -194,8 +217,17 @@ class BGOCounterData(object):
             else:
                 print("No packets found")
 
+            if isinstance(telemetry_file, list):
+                for entry in telemetry_file[1:]:
+                    self.append(BGOCounterData(entry))
+
         elif save_file is not None:
-            with gzip.open(save_file, 'rb') as f:
+            if isinstance(save_file, list):
+                to_open = save_file[0]
+            else:
+                to_open = save_file
+
+            with gzip.open(to_open, 'rb') as f:
                 saved = pickle.load(f)
                 self.filename = saved['filename']
                 self.counter_time = saved['counter_time']
@@ -203,19 +235,27 @@ class BGOCounterData(object):
                 self.channel_livetime = saved['channel_livetime']
                 self.channel_count = saved['channel_count']
                 self.veto_count = saved['veto_count']
+
+            if isinstance(save_file, list):
+                for entry in save_file[1:]:
+                    self.append(BGOCounterData(save_file=entry))
         else:
             raise RuntimeError("Either a telemetry file or a save file must be specified")
 
     def __add__(self, other):
         out = deepcopy(self)
-        out.filename = (self.filename if type(self.filename) == list else [self.filename]) +\
-                       (other.filename if type(other.filename) == list else [other.filename])
-        out.counter_time = np.hstack([self.counter_time, other.counter_time])
-        out.total_livetime = np.hstack([self.total_livetime, other.total_livetime])
-        out.channel_livetime = np.vstack([self.channel_livetime, other.channel_livetime])
-        out.channel_count = np.vstack([self.channel_count, other.channel_count])
-        out.veto_count = np.hstack([self.veto_count, other.veto_count])
+        out.append(other)
         return out
+
+    def append(self, other):
+        """Append the information in another BGOCounterData instance"""
+        self.filename = (self.filename if type(self.filename) == list else [self.filename]) +\
+                        (other.filename if type(other.filename) == list else [other.filename])
+        self.counter_time = np.hstack([self.counter_time, other.counter_time])
+        self.total_livetime = np.hstack([self.total_livetime, other.total_livetime])
+        self.channel_livetime = np.vstack([self.channel_livetime, other.channel_livetime])
+        self.channel_count = np.vstack([self.channel_count, other.channel_count])
+        self.veto_count = np.hstack([self.veto_count, other.veto_count])
 
     def save(self, save_file=None):
         """Save the parsed data for future reloading.
