@@ -279,8 +279,9 @@ class GeData(object):
         plt.semilogy()
         return plt.gca()
 
-    def plot_spatial_spectrum(self, side, binning=np.arange(-128, 2048, 8), **hist2d_kwargs):
-        """Plot the spectrum versus channel as a 2D image
+    def plot_spatial_spectrum(self, side, binning=np.arange(-128, 2048, 8),
+                              energy_coeff=None, use_strip_number=False, **hist2d_kwargs):
+        """Plot the subtracted spectrum versus channel as a 2D image
 
         Parameters
         ----------
@@ -288,13 +289,33 @@ class GeData(object):
             0 for LV side, 1 for HV side
         binning : array-like
             The binning to use for the underlying data
+        energy_coeff: 2x512 `~numpy.ndarray`
+            If not None, apply these linear coefficients (intercept, slope) to convert to energy in keV
+        use_strip_number: bool
+            If True, use strip number as the horizontal axis instead of channel number
         """
         s_side = self.s_lv if side == 0 else self.s_hv
-        args = {'bins' : [np.arange(side*256, (side+1)*256+1), binning],
+        x_values = stripmap[s_side] if use_strip_number else s_side
+        y_values = self.c[self.s, s_side].A1
+        if energy_coeff is not None:
+            y_values = y_values.astype('float') * energy_coeff[1, s_side] + energy_coeff[0, s_side]
+
+        x_binning = np.arange(1, 150) if use_strip_number else np.arange(side*256, (side+1)*256+1)
+        args = {'bins' : [x_binning, binning],
                 'cmap' : 'gray'}
         args.update(hist2d_kwargs)
-        plt.hist2d(s_side, self.c[self.s, s_side].A1, **args)
+        plt.hist2d(x_values, y_values, **args)
+
+        if use_strip_number:
+            plt.xlabel("Strip number (1 to 149)")
+        else:
+            plt.xlabel("Channel number " + ("(0 to 255)" if side == 0 else "(256 to 511)"))
+        if energy_coeff is not None:
+            plt.ylabel("Energy (keV)")
+        else:
+            plt.ylabel("Subtracted ADC value")
         plt.title("CC{0} {1} side".format(self.detector, "LV" if side == 0 else "HV"))
+
         return plt.gca()
 
     def plot_spectrum(self, asiccha, binning=np.arange(0, 3584, 8)):
