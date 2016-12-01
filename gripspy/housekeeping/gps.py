@@ -54,6 +54,7 @@ class GPSData(object):
 
             count = 0
 
+            print("Parsing {0}".format(telemetry_file))
             with open(telemetry_file, 'rb') as f:
                 pg = parser_generator(f, filter_systemid=0x05, filter_tmtype=0x02, verbose=True)
                 for p in pg:
@@ -98,6 +99,7 @@ class GPSData(object):
                 print("No packets found")
 
         elif save_file is not None:
+            print("Restoring {0}".format(save_file))
             with gzip.open(save_file, 'rb') as f:
                 saved = pickle.load(f)
                 self.filename = saved['filename']

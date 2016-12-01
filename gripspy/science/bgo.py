@@ -50,6 +50,7 @@ class BGOEventData(object):
 
             count = 0
 
+            print("Parsing {0}".format(self.filename))
             with open(self.filename, 'rb') as f:
                 pg = parser_generator(f, filter_systemid=0xB6, filter_tmtype=0x82, verbose=True)
                 for p in pg:
@@ -81,6 +82,7 @@ class BGOEventData(object):
             else:
                 to_open = save_file
 
+            print("Restoring {0}".format(to_open))
             with gzip.open(to_open, 'rb') as f:
                 saved = pickle.load(f)
                 self.filename = saved['filename']
@@ -203,6 +205,7 @@ class BGOCounterData(object):
 
             count = 0
 
+            print("Parsing {0}".format(self.filename))
             with open(self.filename, 'rb') as f:
                 pg = parser_generator(f, filter_systemid=0xB6, filter_tmtype=0x81, verbose=True)
                 for p in pg:
@@ -234,6 +237,7 @@ class BGOCounterData(object):
             else:
                 to_open = save_file
 
+            print("Restoring {0}".format(to_open))
             with gzip.open(to_open, 'rb') as f:
                 saved = pickle.load(f)
                 self.filename = saved['filename']

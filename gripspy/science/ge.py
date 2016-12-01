@@ -51,6 +51,7 @@ class GeData(object):
             else:
                 self.filename = telemetry_file
 
+            print("Parsing {0}".format(self.filename))
             result = process(self.filename, detector, os.path.join(DIR, "cms", "cc{0}_1000".format(detector)))
             self.adc = result[0]
             self.cms = result[1]
@@ -72,6 +73,7 @@ class GeData(object):
             else:
                 to_open = save_file
 
+            print("Restoring {0}".format(to_open))
             with gzip.open(to_open, 'rb') as f:
                 saved = pickle.load(f)
                 self.filename = saved['filename']
@@ -483,7 +485,7 @@ def bin_to_sparse_arrays(one_or_more_files, cc_number, max_events=None, verbose=
 
     for entry in filelist:
         with open(entry, "rb") as f:
-            print("Converting file {0} to sparse arrays".format(entry))
+            #print("Converting file {0} to sparse arrays".format(entry))
             while True:
                 # Read in the next chunk
                 chunk = accumulate(f, cc_number, max_events=chunk_size, verbose=verbose)
