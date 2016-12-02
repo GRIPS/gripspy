@@ -233,7 +233,7 @@ class GeData(object):
         lv = stripmap[self.s_lv]
         hv = stripmap[self.s_hv]
         good = np.logical_and(lv < 900, hv < 900)
-        return sps.coo_matrix((good, (hv, lv)), shape=(150, 150), dtype=int).toarray()
+        return sps.coo_matrix((np.ones(np.sum(good)), (hv[good], lv[good])), shape=(150, 150), dtype=int).toarray()
 
     def plot_depth(self, binning=np.arange(-595, 596, 10)):
         """Plot the depth-information plot
