@@ -252,6 +252,7 @@ class GeData(object):
     def plot_hitmap(self, **imshow_kwargs):
         """Plot the hitmap of single-trigger events"""
         args = {'origin' : 'lower',
+                'interpolation' : 'nearest',
                 'cmap' : 'gray'}
         args.update(imshow_kwargs)
         plt.imshow(self.hitmap, **args)
@@ -333,12 +334,18 @@ class GeData(object):
         else:
             index = asiccha
 
-        val, _, _ = plt.hist(self.a[:, index][self.t[:, index].nonzero()].A1, bins=binning, histtype='step', color='r', label='All triggers')
-        plt.hist(self.a[self.s, index][self.t[self.s, index].nonzero()].A1, bins=binning, histtype='step', color='k', label='Single triggers')
+        try:
+            val, _, _ = plt.hist(self.a[:, index][self.t[:, index].nonzero()].A1, bins=binning, histtype='step', color='r', label='All triggers')
+            plt.ylim(0, np.max(val))
+        except AttributeError: # The channel never triggered
+            pass
+        try:
+            plt.hist(self.a[self.s, index][self.t[self.s, index].nonzero()].A1, bins=binning, histtype='step', color='k', label='Single triggers')
+        except AttributeError: # The channel never triggered as a single-trigger pair
+            pass
         plt.hist(self.a[:, index].toarray()[~self.t[:, index].toarray()], bins=binning, histtype='step', color='b', label='Untriggered')
         plt.legend()
         plt.title("Raw ADC spectra for CC{0}/A{1}-{2}".format(self.detector, *divmod(index, 64)))
-        plt.ylim(0, np.max(val))
         return plt.gca()
 
     def plot_subtracted_spectrum(self, asiccha, binning=np.arange(-128, 2048, 8)):
@@ -356,8 +363,14 @@ class GeData(object):
         else:
             index = asiccha
 
-        plt.hist(self.c[:, index][self.t[:, index].nonzero()].A1, bins=binning, histtype='step', color='r', label='All triggers')
-        plt.hist(self.c[self.s, index][self.t[self.s, index].nonzero()].A1, bins=binning, histtype='step', color='k', label='Single triggers')
+        try:
+            plt.hist(self.c[:, index][self.t[:, index].nonzero()].A1, bins=binning, histtype='step', color='r', label='All triggers')
+        except AttributeError: # The channel never triggered
+            pass
+        try:
+            plt.hist(self.c[self.s, index][self.t[self.s, index].nonzero()].A1, bins=binning, histtype='step', color='k', label='Single triggers')
+        except AttributeError: # The channel never triggered as a single-trigger pair
+            pass
         plt.legend()
         plt.title("Common-mode-subtracted ADC spectra for CC{0}/A{1}-{2}".format(self.detector, *divmod(index, 64)))
         return plt.gca()
