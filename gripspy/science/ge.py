@@ -348,6 +348,42 @@ class GeData(object):
         plt.title("Raw ADC spectra for CC{0}/A{1}-{2}".format(self.detector, *divmod(index, 64)))
         return plt.gca()
 
+    def plot_spectrogram(self, side, time_step_in_seconds=1., binning=np.arange(-128, 2048, 8),
+                         energy_coeff=None, **hist2d_kwargs):
+        """Plot a detector-integrated single-trigger spectrogram
+
+        Parameters
+        ----------
+        side : 0 or 1
+            0 for LV side, 1 for HV side
+        time_step_in_seconds : float
+            The size of the time step in seconds
+        binning : array-like
+            The binning to use for the underlying data
+        energy_coeff: 2x512 `~numpy.ndarray`
+            If not None, apply these linear coefficients (intercept, slope) to convert to energy in keV
+        """
+        s_side = self.s_lv if side == 0 else self.s_hv
+        x_values = (self.e[self.s] - np.min(self.e)) / 1e8
+        y_values = self.c[self.s, s_side].A1
+        if energy_coeff is not None:
+            y_values = y_values.astype('float') * energy_coeff[1, s_side] + energy_coeff[0, s_side]
+
+        x_binning = np.arange(0, np.max(x_values) + time_step_in_seconds, time_step_in_seconds)
+        args = {'bins' : [x_binning, binning],
+                'cmap' : 'gray'}
+        args.update(hist2d_kwargs)
+        plt.hist2d(x_values, y_values, **args)
+
+        plt.xlabel("Time (s)")
+        if energy_coeff is not None:
+            plt.ylabel("Energy (keV)")
+        else:
+            plt.ylabel("Subtracted ADC value")
+        plt.title("CC{0} {1} side".format(self.detector, "LV" if side == 0 else "HV"))
+
+        return plt.gca()
+
     def plot_subtracted_spectrum(self, asiccha, binning=np.arange(-128, 2048, 8)):
         """Plot the common-mode-subtracted spectrum for a specified channel
 
