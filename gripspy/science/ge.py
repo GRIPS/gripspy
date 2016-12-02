@@ -116,7 +116,7 @@ class GeData(object):
         self.adc = sps.vstack([self.adc, other.adc])
         self.cms = sps.vstack([self.cms, other.cms])
         self.delta_time = sps.vstack([self.delta_time, other.delta_time])
-        self.event_time = np.hstack([self.event_time, self.event_time])
+        self.event_time = np.hstack([self.event_time, other.event_time])
         self.glitch = sps.vstack([self.glitch, other.glitch])
         self.trigger = sps.vstack([self.trigger, other.trigger])
         self.veto = sps.vstack([self.veto, other.veto])
