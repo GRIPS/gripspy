@@ -282,7 +282,7 @@ class GeData(object):
 
     def plot_spatial_spectrum(self, side, binning=np.arange(-128, 2048, 8),
                               energy_coeff=None, use_strip_number=False, **hist2d_kwargs):
-        """Plot the subtracted spectrum versus channel as a 2D image
+        """Plot the subtracted single-trigger spectrum versus channel as a 2D image
 
         Parameters
         ----------
@@ -349,8 +349,11 @@ class GeData(object):
         return plt.gca()
 
     def plot_spectrogram(self, side, time_step_in_seconds=1., binning=np.arange(-128, 2048, 8),
-                         energy_coeff=None, **hist2d_kwargs):
-        """Plot a detector-integrated single-trigger spectrogram
+                         energy_coeff=None, max_triggers=1, **hist2d_kwargs):
+        """Plot a detector-side-integrated spectrogram, excluding events that exceed a specified
+        maximum number of triggers on that side.  Note that `max_triggers` == is not quite the
+        same as "single-trigger" events because no selection cut is imposed on the the opposite
+        side.
 
         Parameters
         ----------
@@ -362,12 +365,20 @@ class GeData(object):
             The binning to use for the underlying data
         energy_coeff: 2x512 `~numpy.ndarray`
             If not None, apply these linear coefficients (intercept, slope) to convert to energy in keV
+        max_triggers : int
+            Exclude events that have more than this number of triggers on the specified side
         """
-        s_side = self.s_lv if side == 0 else self.s_hv
-        x_values = (self.e[self.s] - np.min(self.e)) / 1e8
-        y_values = self.c[self.s, s_side].A1
+        channels = slice(0, 256) if side == 0 else slice(256, 512)
+        events = (self.t[:, channels].sum(1) <= max_triggers).A1
+
+        x_values = (self.e[events] - np.min(self.e)) / 1e8
+
+        y_values = self.c[events, channels].multiply(self.t[events, channels])
         if energy_coeff is not None:
-            y_values = y_values.astype('float') * energy_coeff[1, s_side] + energy_coeff[0, s_side]
+            y_values = self.t[events, channels] * energy_coeff[0, channels] +\
+                       y_values.asfptype() * energy_coeff[1, channels]
+        else:
+            y_values = y_values.sum(1).A1
 
         x_binning = np.arange(0, np.max(x_values) + time_step_in_seconds, time_step_in_seconds)
         args = {'bins' : [x_binning, binning],
