@@ -36,7 +36,7 @@ full      0x05      0x02    GPS
 \         0x8?      0x05    Card cage (Ge) ASIC registers, LV bottom
 \         0x8?      0x06    Card cage (Ge) ASIC registers, HV top
 \         0x8?      0x07    Card cage (Ge) ASIC registers, HV bottom
-\         0x8?      0x08    Card cage (Ge) counters
+partial   0x8?      0x08    Card cage (Ge) counters
 \         0x8?      0x09    Card cage (Ge) temperatures
 full      0x8?      0xF1    Card cage (Ge) event, raw format, LV side
 full      0x8?      0xF2    Card cage (Ge) event, raw format, HV side
