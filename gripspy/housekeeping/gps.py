@@ -104,7 +104,10 @@ class GPSData(object):
         elif save_file is not None:
             print("Restoring {0}".format(save_file))
             with gzip.open(save_file, 'rb') as f:
-                saved = pickle.load(f)
+                try:
+                    saved = pickle.load(f, encoding='latin1')
+                except TypeError:
+                    saved = pickle.load(f)
                 self.filename = saved['filename']
                 self.systime = saved['systime']
                 self.latitude = saved['latitude']
@@ -127,7 +130,7 @@ class GPSData(object):
 
         Notes
         -----
-        Save files are not compatible between Python 2 and 3
+        Save files may not be compatible between Python 2 and 3
         """
         if save_file is None:
             save_file = self.filename + ".gps.pgz"
@@ -139,4 +142,4 @@ class GPSData(object):
                          'longitude' : self.longitude,
                          'altitude' : self.altitude,
                          'utc_time' : self.utc_time,
-                         'pressure' : self.pressure}, f, pickle.HIGHEST_PROTOCOL)
+                         'pressure' : self.pressure}, f, 2)

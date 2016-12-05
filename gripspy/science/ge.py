@@ -78,7 +78,10 @@ class GeData(object):
 
             print("Restoring {0}".format(to_open))
             with gzip.open(to_open, 'rb') as f:
-                saved = pickle.load(f)
+                try:
+                    saved = pickle.load(f, encoding='latin1')
+                except TypeError:
+                    saved = pickle.load(f)
                 self.filename = saved['filename']
                 self.adc = saved['adc']
                 self.cms = saved['cms']
@@ -141,7 +144,7 @@ class GeData(object):
 
         Notes
         -----
-        Save files are not compatible between Python 2 and 3
+        Save files may not be compatible between Python 2 and 3
         """
         if save_file is None:
             if type(self.filename) == str:
@@ -162,7 +165,7 @@ class GeData(object):
                          'event_time' : self.event_time,
                          'glitch' : self.glitch,
                          'trigger' : self.trigger,
-                         'veto' : self.veto}, f, pickle.HIGHEST_PROTOCOL)
+                         'veto' : self.veto}, f, 2)
 
     @property
     def a(self):

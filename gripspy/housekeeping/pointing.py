@@ -83,7 +83,10 @@ class PointingData(object):
         elif save_file is not None:
             print("Restoring {0}".format(save_file))
             with gzip.open(save_file, 'rb') as f:
-                saved = pickle.load(f)
+                try:
+                    saved = pickle.load(f, encoding='latin1')
+                except TypeError:
+                    saved = pickle.load(f)
                 self.filename = saved['filename']
                 self.systime = saved['systime']
                 self.v_x = saved['v_x']
@@ -107,7 +110,7 @@ class PointingData(object):
 
         Notes
         -----
-        Save files are not compatible between Python 2 and 3
+        Save files may not be compatible between Python 2 and 3
         """
         if save_file is None:
             save_file = self.filename + ".pointing.pgz"
@@ -120,4 +123,4 @@ class PointingData(object):
                          'v_sum' : self.v_sum,
                          'elevation_ae' : self.elevation_ae,
                          'elevation_ie' : self.elevation_ie,
-                         'solar_elevation' : self.solar_elevation}, f, pickle.HIGHEST_PROTOCOL)
+                         'solar_elevation' : self.solar_elevation}, f, 2)

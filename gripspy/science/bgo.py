@@ -87,7 +87,10 @@ class BGOEventData(object):
 
             print("Restoring {0}".format(to_open))
             with gzip.open(to_open, 'rb') as f:
-                saved = pickle.load(f)
+                try:
+                    saved = pickle.load(f, encoding='latin1')
+                except TypeError:
+                    saved = pickle.load(f)
                 self.filename = saved['filename']
                 self.event_time = saved['event_time']
                 self.channel = saved['channel']
@@ -131,7 +134,7 @@ class BGOEventData(object):
 
         Notes
         -----
-        Save files are not compatible between Python 2 and 3
+        Save files may not be compatible between Python 2 and 3
         """
         if save_file is None:
             if type(self.filename) == str:
@@ -150,7 +153,7 @@ class BGOEventData(object):
                          'channel' : self.channel,
                          'level' : self.level,
                          'clock_source' : self.clock_source,
-                         'clock_synced' : self.clock_synced}, f, pickle.HIGHEST_PROTOCOL)
+                         'clock_synced' : self.clock_synced}, f, 2)
 
     @property
     def c(self):
@@ -246,7 +249,10 @@ class BGOCounterData(object):
 
             print("Restoring {0}".format(to_open))
             with gzip.open(to_open, 'rb') as f:
-                saved = pickle.load(f)
+                try:
+                    saved = pickle.load(f, encoding='latin1')
+                except TypeError:
+                    saved = pickle.load(f)
                 self.filename = saved['filename']
                 self.counter_time = saved['counter_time']
                 self.total_livetime = saved['total_livetime']
@@ -290,7 +296,7 @@ class BGOCounterData(object):
 
         Notes
         -----
-        Save files are not compatible between Python 2 and 3
+        Save files may not be compatible between Python 2 and 3
         """
         if save_file is None:
             if type(self.filename) == str:
@@ -309,7 +315,7 @@ class BGOCounterData(object):
                          'total_livetime' : self.total_livetime,
                          'channel_livetime' : self.channel_livetime,
                          'channel_count' : self.channel_count,
-                         'veto_count' : self.veto_count}, f, pickle.HIGHEST_PROTOCOL)
+                         'veto_count' : self.veto_count}, f, 2)
 
     @property
     def t(self):

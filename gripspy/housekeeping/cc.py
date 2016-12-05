@@ -84,7 +84,10 @@ class CardCageInfo(object):
         elif save_file is not None:
             print("Restoring {0}".format(save_file))
             with gzip.open(save_file, 'rb') as f:
-                saved = pickle.load(f)
+                try:
+                    saved = pickle.load(f, encoding='latin1')
+                except TypeError:
+                    saved = pickle.load(f)
                 self.filename = saved['filename']
                 for attr in self.attributes_all:
                     setattr(self, attr, saved[attr])
@@ -123,7 +126,7 @@ class CardCageInfo(object):
 
         Notes
         -----
-        Save files are not compatible between Python 2 and 3
+        Save files may not be compatible between Python 2 and 3
         """
         if save_file is None:
             save_file = self.filename + ".ccinfo.pgz"
@@ -132,4 +135,4 @@ class CardCageInfo(object):
             out_dict = {'filename' : self.filename}
             for attr in self.attributes_all:
                 out_dict[attr] = getattr(self, attr)
-            pickle.dump(out_dict, f, pickle.HIGHEST_PROTOCOL)
+            pickle.dump(out_dict, f, 2)
