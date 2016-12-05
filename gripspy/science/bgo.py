@@ -148,6 +148,7 @@ class BGOEventData(object):
             to_save = os.path.basename(to_save)
 
         with gzip.open(to_save, 'wb') as f:
+            print("Saving {0}".format(to_save))
             pickle.dump({'filename' : self.filename,
                          'event_time' : self.event_time,
                          'channel' : self.channel,
@@ -310,6 +311,7 @@ class BGOCounterData(object):
             to_save = os.path.basename(to_save)
 
         with gzip.open(to_save, 'wb') as f:
+            print("Saving {0}".format(to_save))
             pickle.dump({'filename' : self.filename,
                          'counter_time' : self.counter_time,
                          'total_livetime' : self.total_livetime,

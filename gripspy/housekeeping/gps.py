@@ -136,6 +136,7 @@ class GPSData(object):
             save_file = self.filename + ".gps.pgz"
 
         with gzip.open(save_file, 'wb') as f:
+            print("Saving {0}".format(save_file))
             pickle.dump({'filename' : self.filename,
                          'systime' : self.systime,
                          'latitude' : self.latitude,

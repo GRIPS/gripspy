@@ -132,6 +132,7 @@ class CardCageInfo(object):
             save_file = self.filename + ".ccinfo.pgz"
 
         with gzip.open(save_file, 'wb') as f:
+            print("Saving {0}".format(save_file))
             out_dict = {'filename' : self.filename}
             for attr in self.attributes_all:
                 out_dict[attr] = getattr(self, attr)

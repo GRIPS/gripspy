@@ -158,6 +158,7 @@ class GeData(object):
             to_save = os.path.basename(to_save)
 
         with gzip.open(to_save, 'wb') as f:
+            print("Saving {0}".format(to_save))
             pickle.dump({'filename' : self.filename,
                          'adc' : self.adc,
                          'cms' : self.cms,
