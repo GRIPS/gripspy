@@ -4,7 +4,10 @@ Module for analyzing GPS and pressure data from the SIP
 from __future__ import division, absolute_import, print_function
 
 import os
-import pickle
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
 import gzip
 
 import numpy as np
@@ -122,6 +125,9 @@ class GPSData(object):
             The name of the save file to create.  If none is provided, the default is the name of
             the telemetry file with the extension ".gps.pgz" appended.
 
+        Notes
+        -----
+        Save files are not compatible between Python 2 and 3
         """
         if save_file is None:
             save_file = self.filename + ".gps.pgz"

@@ -5,7 +5,10 @@ from __future__ import division, absolute_import, print_function
 
 import os
 from io import open
-import pickle
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
 import gzip
 from copy import deepcopy
 
@@ -125,6 +128,10 @@ class BGOEventData(object):
             is the source.
         use_current_directory : bool
             If True, remove any directory specification from `save_file`
+
+        Notes
+        -----
+        Save files are not compatible between Python 2 and 3
         """
         if save_file is None:
             if type(self.filename) == str:
@@ -280,6 +287,10 @@ class BGOCounterData(object):
             is the source.
         use_current_directory : bool
             If True, remove any directory specification from `save_file`
+
+        Notes
+        -----
+        Save files are not compatible between Python 2 and 3
         """
         if save_file is None:
             if type(self.filename) == str:
