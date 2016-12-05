@@ -369,6 +369,42 @@ def pcsc2fc(buf, out):
     return out
 
 
+def cc_counter(buf, out):
+    """Parse a card-cage counter packet (SystemID 0x8? and TmType 0x08)
+    """
+    if out['systemid'] & 0xF0 != 0x80 or out['tmtype'] != 0x08:
+        raise ValueError
+
+    index = INDEX_PAYLOAD
+
+    out['elapsed_time']            = struct.unpack('<I', buf[index      : index + 4 ])[0]
+    out['busy_time']               = struct.unpack('<I', buf[index + 4  : index + 8 ])[0]
+    out['busy_count']              = struct.unpack('<I', buf[index + 8  : index + 12])[0]
+    out['veto_mult_trig_hard']     = struct.unpack('<I', buf[index + 12 : index + 16])[0]
+    out['veto_mult_trig_soft']     = struct.unpack('<I', buf[index + 16 : index + 20])[0]
+    out['busy_time_interface']     = struct.unpack('<I', buf[index + 20 : index + 24])[0]
+    out['busy_count_interface']    = struct.unpack('<I', buf[index + 24 : index + 28])[0]
+    out['busy_time_system']        = struct.unpack('<I', buf[index + 28 : index + 32])[0]
+    out['busy_count_system']       = struct.unpack('<I', buf[index + 32 : index + 36])[0]
+    out['guard_ring_lv_time']      = struct.unpack('<I', buf[index + 36 : index + 40])[0]
+    out['guard_ring_lv_count']     = struct.unpack('<I', buf[index + 40 : index + 44])[0]
+    out['guard_ring_hv_time']      = struct.unpack('<I', buf[index + 44 : index + 48])[0]
+    out['guard_ring_hv_count']     = struct.unpack('<I', buf[index + 48 : index + 52])[0]
+    out['shield_time']             = struct.unpack('<I', buf[index + 52 : index + 56])[0]
+    out['shield_count']            = struct.unpack('<I', buf[index + 56 : index + 60])[0]
+    out['reboot_count']            = struct.unpack('<I', buf[index + 60 : index + 64])[0]
+    out['event_count']             = struct.unpack('<H', buf[index + 64 : index + 66])[0]
+    out['veto_shield_soft']        = struct.unpack('<H', buf[index + 66 : index + 68])[0]
+    out['veto_guard_ring_lv_soft'] = struct.unpack('<H', buf[index + 68 : index + 70])[0]
+    out['veto_guard_ring_hv_soft'] = struct.unpack('<H', buf[index + 70 : index + 72])[0]
+    out['veto_shield_hard']        = struct.unpack('<H', buf[index + 72 : index + 74])[0]
+    out['veto_guard_ring_lv_hard'] = struct.unpack('<H', buf[index + 74 : index + 76])[0]
+    out['veto_guard_ring_hv_hard'] = struct.unpack('<H', buf[index + 76 : index + 78])[0]
+    out['dropped_event_count']     = struct.unpack('<H', buf[index + 78 : index + 80])[0]
+
+    return out
+
+
 # Populate the parser registry now that the functions are all defined
 
 # Card-cage packets
@@ -386,3 +422,7 @@ parser_registry[0x05][0x02] = gps
 # PCSC packet
 parser_registry[0x03][0x02] = fc2pcsc
 parser_registry[0x03][0x03] = pcsc2fc
+
+# Card-cage packets
+for systemid in range(0x80, 0x90):
+    parser_registry[systemid][0x08] = cc_counter
