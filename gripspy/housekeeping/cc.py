@@ -4,7 +4,6 @@ Module for analyzing card-cage information
 from __future__ import division, absolute_import, print_function
 
 import os
-from operator import attrgetter
 import pickle
 import gzip
 
@@ -34,13 +33,25 @@ class CardCageInfo(object):
     -----
     This implementation is still incomplete!
     """
+    attributes_simple = ['systime', 'elapsed_time', 'busy_time', 'busy_count',
+                              'veto_mult_trig_hard', 'veto_mult_trig_soft',
+                              'busy_time_interface', 'busy_count_interface',
+                              'busy_time_system', 'busy_count_system',
+                              'guard_ring_lv_time', 'guard_ring_lv_count',
+                              'guard_ring_hv_time', 'guard_ring_hv_count',
+                              'shield_time', 'shield_count', 'reboot_count', 'event_count',
+                              'veto_shield_soft', 'veto_guard_ring_lv_soft', 'veto_guard_ring_hv_soft',
+                              'veto_shield_hard', 'veto_guard_ring_lv_hard', 'veto_guard_ring_hv_hard',
+                              'dropped_event_count']
+    attributes_all = attributes_simple + ['busy_fraction']
+
     def __init__(self, telemetry_file=None, save_file=None):
         if telemetry_file is not None:
             self.filename = telemetry_file
 
-            self.systime = [[], [], [], [], [], []]
-            self.busy_fraction = [[], [], [], [], [], []]
-            self.event_count = [[], [], [], [], [], []]
+            for attr in self.attributes_simple:
+                setattr(self, attr, [[], [], [], [], [], []])
+            self.busy_fraction = [None]*6
 
             count = 0
 
@@ -54,15 +65,14 @@ class CardCageInfo(object):
                     count += 1
                     cc_number = p['systemid'] & 0x0F
 
-                    self.systime[cc_number].append(p['systime'])
-                    self.busy_fraction[cc_number].append(p['busy_time'] / p['elapsed_time'])
-                    self.event_count[cc_number].append(p['event_count'])
+                    for attr in self.attributes_simple:
+                        getattr(self, attr)[cc_number].append(p[attr])
 
             if count > 0:
                 for i in range(6):
-                    self.systime[i] = np.hstack(self.systime[i])
-                    self.busy_fraction[i] = np.hstack(self.busy_fraction[i])
-                    self.event_count[i] = np.hstack(self.event_count[i])
+                    for attr in self.attributes_simple:
+                        getattr(self, attr)[i] = np.hstack(getattr(self, attr)[i])
+                    self.busy_fraction[i] = self.busy_time[i] / self.elapsed_time[i]
 
                 print("Total packets: {0}".format(count))
             else:
@@ -73,24 +83,27 @@ class CardCageInfo(object):
             with gzip.open(save_file, 'rb') as f:
                 saved = pickle.load(f)
                 self.filename = saved['filename']
-                self.systime = saved['systime']
-                self.busy_fraction = saved['busy_fraction']
-                self.event_count = saved['event_count']
+                for attr in self.attributes_all:
+                    setattr(self, attr, saved[attr])
         else:
             raise RuntimeError("Either a telemetry file or a save file must be specified")
 
     def __getitem__(self, key):
         if isinstance(key, int):
             if key >= 0 and key < 6:
-                return pd.DataFrame({'busy_fraction' : self.busy_fraction[key],
-                                     'event_count' : self.event_count[key]},
+                out_dict = {}
+                for attr in self.attributes_all:
+                    if attr == 'systime':
+                        continue
+                    out_dict[attr] = getattr(self, attr)[key]
+                return pd.DataFrame(out_dict,
                                     index=oeb2utc(self.systime[key]))
             else:
                 raise IndexError("Only integers from 0 to 5 are valid")
         if isinstance(key, str):
             out_dict = {}
             for i in range(6):
-                out_dict['CC' + str(i)] = pd.Series(attrgetter(key)(self)[i], index=oeb2utc(self.systime[i]))
+                out_dict['CC' + str(i)] = pd.Series(getattr(self, key)[i], index=oeb2utc(self.systime[i]))
             return pd.DataFrame(out_dict)
         else:
             raise TypeError("Unsupported type")
@@ -110,7 +123,7 @@ class CardCageInfo(object):
             save_file = self.filename + ".ccinfo.pgz"
 
         with gzip.open(save_file, 'wb') as f:
-            pickle.dump({'filename' : self.filename,
-                         'systime' : self.systime,
-                         'busy_fraction' : self.busy_fraction,
-                         'event_count' : self.event_count}, f, pickle.HIGHEST_PROTOCOL)
+            out_dict = {'filename' : self.filename}
+            for attr in self.attributes_all:
+                out_dict[attr] = getattr(self, attr)
+            pickle.dump(out_dict, f, pickle.HIGHEST_PROTOCOL)
