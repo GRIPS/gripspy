@@ -27,14 +27,14 @@ class CardCageInfo(object):
 
     Parameters
     ----------
-    telemetry_file : str
+    telemetry_file : str (or list)
         The name of the telemetry file to analyze.  If None is specified, a save file must be specified.
     save_file : str
         The name of a save file from a telemetry file that was previously parsed.
 
     Notes
     -----
-    This implementation is still incomplete!
+    This implementation extracts all of the information, but the API is subject to change.
     """
     attributes_simple = ['systime', 'elapsed_time', 'busy_time', 'busy_count',
                               'veto_mult_trig_hard', 'veto_mult_trig_soft',
@@ -50,7 +50,10 @@ class CardCageInfo(object):
 
     def __init__(self, telemetry_file=None, save_file=None):
         if telemetry_file is not None:
-            self.filename = telemetry_file
+            if isinstance(telemetry_file, list):
+                self.filename = telemetry_file[0]
+            else:
+                self.filename = telemetry_file
 
             for attr in self.attributes_simple:
                 setattr(self, attr, [[], [], [], [], [], []])
@@ -58,8 +61,8 @@ class CardCageInfo(object):
 
             count = 0
 
-            print("Parsing {0}".format(telemetry_file))
-            with open(telemetry_file, 'rb') as f:
+            print("Parsing {0}".format(self.filename))
+            with open(self.filename, 'rb') as f:
                 pg = parser_generator(f, filter_tmtype=0x08, verbose=True)
                 for p in pg:
                     if p['systemid'] & 0xF0 != 0x80:
@@ -81,9 +84,18 @@ class CardCageInfo(object):
             else:
                 print("No packets found")
 
+            if isinstance(telemetry_file, list):
+                for entry in telemetry_file[1:]:
+                    self.append(CardCageInfo(entry))
+
         elif save_file is not None:
-            print("Restoring {0}".format(save_file))
-            with gzip.open(save_file, 'rb') as f:
+            if isinstance(save_file, list):
+                to_open = save_file[0]
+            else:
+                to_open = save_file
+
+            print("Restoring {0}".format(to_open))
+            with gzip.open(to_open, 'rb') as f:
                 try:
                     saved = pickle.load(f, encoding='latin1')
                 except TypeError:
@@ -91,6 +103,10 @@ class CardCageInfo(object):
                 self.filename = saved['filename']
                 for attr in self.attributes_all:
                     setattr(self, attr, saved[attr])
+
+            if isinstance(save_file, list):
+                for entry in save_file[1:]:
+                    self.append(CardCageInfo(save_file=entry))
         else:
             raise RuntimeError("Either a telemetry file or a save file must be specified")
 
@@ -114,7 +130,15 @@ class CardCageInfo(object):
         else:
             raise TypeError("Unsupported type")
 
-    def save(self, save_file=None):
+    def append(self, other):
+        """Append the information in another CardCageInfo instance"""
+        self.filename = (self.filename if type(self.filename) == list else [self.filename]) +\
+                        (other.filename if type(other.filename) == list else [other.filename])
+        for i in range(6):
+            for attr in self.attributes_all:
+                getattr(self, attr)[i] = np.hstack([getattr(self, attr)[i], getattr(other, attr)[i]])
+
+    def save(self, save_file=None, use_current_directory=False):
         """Save the parsed data for future reloading.
         The data is stored in gzip-compressed binary pickle format.
 
@@ -122,17 +146,25 @@ class CardCageInfo(object):
         ----------
         save_file : str
             The name of the save file to create.  If none is provided, the default is the name of
-            the telemetry file with the extension ".ccinfo.pgz" appended.
+            the telemetry file with the extension ".ccinfo.pgz" appended if a single telemetry file
+            is the source.
+        use_current_directory : bool
+            If True, remove any directory specification from `save_file`
 
         Notes
         -----
         Save files may not be compatible between Python 2 and 3
         """
         if save_file is None:
-            save_file = self.filename + ".ccinfo.pgz"
+            if type(self.filename) == str:
+                to_save = self.filename + ".ccinfo.pgz"
+            else:
+                raise RuntimeError("The name for the save file needs to be explicitly specified here")
+        else:
+            to_save = save_file
 
-        with gzip.open(save_file, 'wb') as f:
-            print("Saving {0}".format(save_file))
+        with gzip.open(to_save, 'wb') as f:
+            print("Saving {0}".format(to_save))
             out_dict = {'filename' : self.filename}
             for attr in self.attributes_all:
                 out_dict[attr] = getattr(self, attr)
