@@ -17,6 +17,7 @@ import scipy.sparse as sps
 import matplotlib.pyplot as plt
 
 from ..telemetry import parser_generator
+from ..util.time import oeb2utc
 
 
 __all__ = ['GeData']
@@ -245,6 +246,47 @@ class GeData(object):
         hv = stripmap[self.s_hv]
         good = np.logical_and(lv < 900, hv < 900)
         return sps.coo_matrix((np.ones(np.sum(good)), (hv[good], lv[good])), shape=(150, 150), dtype=int).toarray()
+
+    def lightcurve(self, side, binning, time_step_in_seconds=1.,
+                   energy_coeff=None, max_triggers=1):
+        """Return a detector-side-integrated lightcurve, excluding events that exceed a specified
+        maximum number of triggers on that side.  Note that `max_triggers` == is not quite the
+        same as "single-trigger" events because no selection cut is imposed on the the opposite
+        side.
+
+        Parameters
+        ----------
+        side : 0 or 1
+            0 for LV side, 1 for HV side
+        binning : array-like
+            The binning to use for the underlying data
+        time_step_in_seconds : float
+            The size of the time step in seconds
+        energy_coeff: 2x512 `~numpy.ndarray`
+            If not None, apply these linear coefficients (intercept, slope) to convert to energy in keV
+        max_triggers : int
+            Exclude events that have more than this number of triggers on the specified side
+        """
+        channels = slice(0, 256) if side == 0 else slice(256, 512)
+        events = (self.t[:, channels].sum(1) <= max_triggers).A1
+
+        x_values = self.e[events]
+
+        y_values = self.c[events, channels].multiply(self.t[events, channels])
+        if energy_coeff is not None:
+            y_values = self.t[events, channels] * energy_coeff[0, channels] +\
+                       y_values.asfptype() * energy_coeff[1, channels]
+        else:
+            y_values = y_values.sum(1).A1
+
+        x_binning = np.arange(np.min(self.e),
+                              np.max(x_values) + time_step_in_seconds * 1e8,
+                              time_step_in_seconds * 1e8)
+
+        time_axis = (x_binning[:-1] + x_binning[1:]) / 2
+        h = np.histogram2d(y_values, x_values, [binning, x_binning])
+
+        return oeb2utc(time_axis / 10), h[0].T
 
     def plot_depth(self, binning=np.arange(-595, 596, 10)):
         """Plot the depth-information plot
