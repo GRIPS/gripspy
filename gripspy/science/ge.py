@@ -41,12 +41,14 @@ class GeData(object):
         The name of the telemetry file to analyze.  If None is specified, a save file must be specified.
     save_file : str (or list)
         The name of a save file from a telemetry file that was previously parsed.
+    max_triggers : int
+        If not None, cull any events with more than this number of triggers on either detector side.
 
     Notes
     -----
     `event_time` is stored in 10-ns steps
     """
-    def __init__(self, detector, telemetry_file=None, save_file=None):
+    def __init__(self, detector, telemetry_file=None, save_file=None, max_triggers=None):
         self.detector = detector
 
         if telemetry_file is not None:
@@ -65,11 +67,14 @@ class GeData(object):
             self.trigger = result[5]
             self.veto = result[6]
 
-            self._process_single_triggers()
+            if max_triggers is not None:
+                self._cull_excessive_triggers(max_triggers)
 
             if isinstance(telemetry_file, list):
                 for entry in telemetry_file[1:]:
-                    self.append(GeData(self.detector, entry))
+                    self.append(GeData(self.detector, entry, max_triggers=max_triggers), defer_processing=True)
+
+            self._process_single_triggers()
 
         elif save_file is not None:
             if isinstance(save_file, list):
@@ -92,11 +97,14 @@ class GeData(object):
                 self.trigger = saved['trigger']
                 self.veto = saved['veto']
 
-            self._process_single_triggers()
+            if max_triggers is not None:
+                self._cull_excessive_triggers(max_triggers)
 
             if isinstance(save_file, list):
                 for entry in save_file[1:]:
-                    self.append(GeData(self.detector, save_file=entry))
+                    self.append(GeData(self.detector, save_file=entry, max_triggers=max_triggers), defer_processing=True)
+
+            self._process_single_triggers()
 
         else:
             raise RuntimeError("Either a telemetry file or a save file must be specified")
@@ -105,6 +113,18 @@ class GeData(object):
         out = deepcopy(self)
         out.append(other)
         return out
+
+    def _cull_excessive_triggers(self, max_triggers):
+        """Only keep events that do not exceed a maximum number of triggers on each side."""
+        keep = np.flatnonzero(np.logical_and(self.trigger[:, 0:256].sum(1) <= max_triggers,
+                                             self.trigger[:, 256:512].sum(1) <= max_triggers).A1)
+        self.adc = self.adc[keep, :]
+        self.cms = self.cms[keep, :]
+        self.delta_time = self.delta_time[keep, :]
+        self.event_time = self.event_time[keep]
+        self.glitch = self.glitch[keep, :]
+        self.trigger = self.trigger[keep, :]
+        self.veto = self.veto[keep, :]
 
     def _process_single_triggers(self):
         self.single_triggers = np.flatnonzero(np.logical_and(self.trigger[:, 0:256].sum(1) == 1,
@@ -116,7 +136,7 @@ class GeData(object):
         self.single_triggers_lv = self.trigger[self.single_triggers, 0:256].nonzero()[1]
         self.single_triggers_hv = self.trigger[self.single_triggers, 256:512].nonzero()[1] + 256
 
-    def append(self, other):
+    def append(self, other, defer_processing=False):
         """Append the information in another GeData instance"""
         self.filename = (self.filename if type(self.filename) == list else [self.filename]) +\
                         (other.filename if type(other.filename) == list else [other.filename])
@@ -128,7 +148,8 @@ class GeData(object):
         self.trigger = sps.vstack([self.trigger, other.trigger])
         self.veto = sps.vstack([self.veto, other.veto])
 
-        self._process_single_triggers()
+        if not defer_processing:
+            self._process_single_triggers()
 
     def save(self, save_file=None, use_current_directory=False):
         """Save the parsed data for future reloading.
