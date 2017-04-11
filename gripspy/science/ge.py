@@ -309,7 +309,7 @@ class GeData(object):
 
         return oeb2utc(time_axis / 10), h[0].T
 
-    def plot_depth(self, binning=np.arange(-595, 596, 10)):
+    def plot_depth(self, binning=np.arange(-595, 596, 10), **hist_kwargs):
         """Plot the depth-information plot
         
         Parameters
@@ -317,10 +317,15 @@ class GeData(object):
         binning : array-like
             The binning to use for the underlying data
         """
+        args = {'bins' : binning,
+                'histtype' : 'step',
+                'label' : 'CC{0}'.format(self.detector)}
+        args.update(hist_kwargs)
         plt.hist((self.d[self.s, self.s_hv].A1 - self.d[self.s, self.s_lv].A1) * 10.,
-                 bins=binning, histtype='step', label='CC{0}'.format(self.detector))
-        plt.xlabel("Nanoseconds")
-        plt.title("CC{0} HV time minus LV time (i.e., left is HV side)".format(self.detector))
+                 **args)
+        plt.xlabel("[<--HV side]        HV time minus LV time (ns)        [LV side-->]")
+        plt.ylabel("Counts")
+        plt.title("CC{0} depth plot".format(self.detector))
         return plt.gca()
 
     def plot_hitmap(self, **imshow_kwargs):
