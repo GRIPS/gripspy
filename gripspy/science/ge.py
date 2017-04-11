@@ -294,7 +294,7 @@ class GeData(object):
     def lightcurve(self, side, binning, time_step_in_seconds=1.,
                    energy_coeff=None, max_triggers=1):
         """Return a detector-side-integrated lightcurve, excluding events that exceed a specified
-        maximum number of triggers on that side.  Note that `max_triggers` == is not quite the
+        maximum number of triggers on that side.  Note that `max_triggers` == 1 is not quite the
         same as "single-trigger" events because no selection cut is imposed on the the opposite
         side.
 
@@ -333,7 +333,7 @@ class GeData(object):
         return oeb2utc(time_axis / 10), h[0].T
 
     def plot_depth(self, binning=np.arange(-595, 596, 10), **hist_kwargs):
-        """Plot the depth-information plot
+        """Plot the depth-information plot, for single-trigger events
         
         Parameters
         ----------
@@ -453,7 +453,7 @@ class GeData(object):
     def plot_spectrogram(self, side, time_step_in_seconds=1., binning=np.arange(-128, 2048, 8),
                          energy_coeff=None, max_triggers=1, **hist2d_kwargs):
         """Plot a detector-side-integrated spectrogram, excluding events that exceed a specified
-        maximum number of triggers on that side.  Note that `max_triggers` == is not quite the
+        maximum number of triggers on that side.  Note that `max_triggers` == 1 is not quite the
         same as "single-trigger" events because no selection cut is imposed on the the opposite
         side.
 
