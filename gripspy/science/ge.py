@@ -43,12 +43,14 @@ class GeData(object):
         The name of a save file from a telemetry file that was previously parsed.
     max_triggers : int
         If not None, cull any events with more than this number of triggers on either detector side.
+    reject_glitches : bool
+        If True, cull any events that have any glitch bit set (even on non-triggered channels)
 
     Notes
     -----
     `event_time` is stored in 10-ns steps
     """
-    def __init__(self, detector, telemetry_file=None, save_file=None, max_triggers=None):
+    def __init__(self, detector, telemetry_file=None, save_file=None, max_triggers=None, reject_glitches=False):
         self.detector = detector
 
         if telemetry_file is not None:
@@ -70,9 +72,14 @@ class GeData(object):
             if max_triggers is not None:
                 self._cull_excessive_triggers(max_triggers)
 
+            if reject_glitches:
+                self._cull_glitches()
+
             if isinstance(telemetry_file, list):
                 for entry in telemetry_file[1:]:
-                    self.append(GeData(self.detector, entry, max_triggers=max_triggers), defer_processing=True)
+                    self.append(GeData(self.detector, entry,
+                                       max_triggers=max_triggers, reject_glitches=reject_glitches),
+                                defer_processing=True)
 
             self._process_single_triggers()
 
@@ -100,9 +107,14 @@ class GeData(object):
             if max_triggers is not None:
                 self._cull_excessive_triggers(max_triggers)
 
+            if reject_glitches:
+                self._cull_glitches()
+
             if isinstance(save_file, list):
                 for entry in save_file[1:]:
-                    self.append(GeData(self.detector, save_file=entry, max_triggers=max_triggers), defer_processing=True)
+                    self.append(GeData(self.detector, save_file=entry,
+                                       max_triggers=max_triggers, reject_glitches=reject_glitches),
+                                defer_processing=True)
 
             self._process_single_triggers()
 
@@ -118,6 +130,17 @@ class GeData(object):
         """Only keep events that do not exceed a maximum number of triggers on each side."""
         keep = np.flatnonzero(np.logical_and(self.trigger[:, 0:256].sum(1) <= max_triggers,
                                              self.trigger[:, 256:512].sum(1) <= max_triggers).A1)
+        self.adc = self.adc[keep, :]
+        self.cms = self.cms[keep, :]
+        self.delta_time = self.delta_time[keep, :]
+        self.event_time = self.event_time[keep]
+        self.glitch = self.glitch[keep, :]
+        self.trigger = self.trigger[keep, :]
+        self.veto = self.veto[keep, :]
+
+    def _cull_glitches(self):
+        """Only keep events that do not have any glitch bits set."""
+        keep = np.flatnonzero((self.glitch.sum(1) == 0).A1)
         self.adc = self.adc[keep, :]
         self.cms = self.cms[keep, :]
         self.delta_time = self.delta_time[keep, :]
