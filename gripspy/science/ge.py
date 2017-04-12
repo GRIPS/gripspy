@@ -130,6 +130,7 @@ class GeData(object):
         """Only keep events that do not exceed a maximum number of triggers on each side."""
         keep = np.flatnonzero(np.logical_and(self.trigger[:, 0:256].sum(1) <= max_triggers,
                                              self.trigger[:, 256:512].sum(1) <= max_triggers).A1)
+        print("  Retaining {0:%} of events due to trigger criterion".format(len(keep)/len(self.event_time)))
         self.adc = self.adc[keep, :]
         self.cms = self.cms[keep, :]
         self.delta_time = self.delta_time[keep, :]
@@ -141,6 +142,7 @@ class GeData(object):
     def _cull_glitches(self):
         """Only keep events that do not have any glitch bits set."""
         keep = np.flatnonzero((self.glitch.sum(1) == 0).A1)
+        print("  Retaining {0:%} of events due to glitch rejection".format(len(keep)/len(self.event_time)))
         self.adc = self.adc[keep, :]
         self.cms = self.cms[keep, :]
         self.delta_time = self.delta_time[keep, :]
