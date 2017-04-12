@@ -333,12 +333,12 @@ class GeData(object):
         return oeb2utc(time_axis / 10), h[0].T
 
     def plot_depth(self, binning=np.arange(-595, 596, 10), **hist_kwargs):
-        """Plot the depth-information plot, for single-trigger events
+        """Plot the depth-information plot, for only single-trigger events
         
         Parameters
         ----------
         binning : array-like
-            The binning to use for the underlying data
+            The binning to use for the time-difference axis in nanoseconds
         """
         args = {'bins' : binning,
                 'histtype' : 'step',
@@ -349,6 +349,69 @@ class GeData(object):
         plt.xlabel("[<--HV side]        HV time minus LV time (ns)        [LV side-->]")
         plt.ylabel("Counts")
         plt.title("CC{0} depth plot".format(self.detector))
+        return plt.gca()
+
+    def plot_depth_vs_energy(self, side,
+                             depth_binning=np.arange(-595, 596, 10),
+                             energy_binning=np.arange(-128, 2048, 8),
+                             energy_coeff=None,
+                             min_lv_triggers=1, max_lv_triggers=1,
+                             min_hv_triggers=1, max_hv_triggers=1,
+                             **hist2d_kwargs):
+        """Plot the depth information versus 'energy', integrated over a detector side
+
+        Parameters
+        ----------
+        side : 0 or 1
+            0 for LV side, 1 for HV side
+        depth_binning : array-like
+            The binning to use for the time-difference axis in nanoseconds
+        energy_binning : array-like
+            The binning to use for the 'energy' axis in ADC bins or in keV
+        energy_coeff: 2x512 `~numpy.ndarray`
+            If not None, apply these linear coefficients (intercept, slope) to convert to energy in keV
+        min_lv_triggers : int
+            Do not include events with fewer than this number of triggers on the LV side
+        max_lv_triggers : int
+            Do not include events with more than this number of triggers on the LV side
+        min_hv_triggers : int
+            Do not include events with fewer than this number of triggers on the HV side
+        max_hv_triggers : int
+            Do not include events with more than this number of triggers on the HV side
+        """
+        channels = slice(0, 256) if side == 0 else slice(256, 512)
+        num_lv_triggers = self.t[:, 0:256].sum(1).A1
+        num_hv_triggers = self.t[:, 256:512].sum(1).A1
+        events = np.logical_and(np.logical_and(num_lv_triggers >= min_lv_triggers,
+                                               num_lv_triggers <= max_lv_triggers),
+                                np.logical_and(num_hv_triggers >= min_hv_triggers,
+                                               num_hv_triggers <= max_hv_triggers))
+
+        x_values = self.c[events, channels].multiply(self.t[events, channels])
+        if energy_coeff is not None:
+            x_values = self.t[events, channels] * energy_coeff[0, channels] +\
+                       x_values.asfptype() * energy_coeff[1, channels]
+        else:
+            x_values = x_values.sum(1).A1
+
+        # Clunky because the sparse matrix is being converted to the whole array (but not sure how to be more elegant)
+        lv = (self.d[events, 0:256] + 1000 * (~self.t[events, 0:256].toarray())).min(1).A1
+        hv = (self.d[events, 256:512] + 1000 * (~self.t[events, 256:512].toarray())).min(1).A1
+
+        y_values = (hv - lv) * 10.
+
+        args = {'bins' : [energy_binning, depth_binning],
+                'cmap' : 'gray'}
+        args.update(hist2d_kwargs)
+        plt.hist2d(x_values, y_values, **args)
+
+        if energy_coeff is not None:
+            plt.xlabel("Energy (keV)")
+        else:
+            plt.xlabel("Subtracted ADC value")
+        plt.ylabel("[<--HV]    HV time minus LV time (ns)    [LV-->]")
+        plt.title("CC{0} {1} side".format(self.detector, "LV" if side == 0 else "HV"))
+
         return plt.gca()
 
     def plot_hitmap(self, **imshow_kwargs):
