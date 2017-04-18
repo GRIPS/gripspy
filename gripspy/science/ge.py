@@ -334,6 +334,77 @@ class GeData(object):
 
         return oeb2utc(time_axis / 10), h[0].T
 
+    def plot_conversion_vs_time(self, asiccha, event_mask=None, time_binning=(250, 501, 1),
+                                max_triggers=None,
+                                **hist2d_kwargs):
+        """Plot the conversions as a function of time since the preceding conversion.
+        This type of plot is useful for looking for post-conversion baseline effects.
+        This plot only makes sense if no events have been culled from the event list upon parsing
+        (e.g., from having too many triggers or having glitches).
+
+        Binning of ADC values is currently automatic around the median of the values.
+
+        Parameters
+        ----------
+        asiccha : tuple or int
+            Either (ASIC#, channel#) if a tuple or ASIC# * 64 + channel# if an int
+        event_mask : `~numpy.ndarray`
+            If not None, bool array where True values are which events to plot.
+            Otherwise, the default is those events where `asiccha` did not trigger.
+        max_triggers : int
+            If not None, only show conversions that do not exceed this number of triggers on the
+            same side as `asiccha`.
+        time_binning : tuple or array-like
+            The binning to use for the time since the preceding conversion in microseconds
+        """
+        if type(asiccha) == tuple:
+            index = asiccha[0] * 64 + asiccha[1]
+        else:
+            index = asiccha
+
+        if event_mask is None:
+            event_mask_temp = ~self.t[:, index].toarray().ravel()
+        else:
+            event_mask_temp = event_mask
+        event_mask_temp[0] = False
+
+        if max_triggers is not None:
+            channels = slice(0, 256) if asiccha < 256 else slice(256, 512)
+            keep = (self.t[:, channels].sum(1) <= max_triggers).A1
+            event_mask_temp = np.logical_and(event_mask_temp, keep)
+
+        event_indices = np.flatnonzero(event_mask_temp)
+
+        if type(time_binning) == tuple:
+            x_binning = np.arange(*time_binning)
+        else:
+            x_binning = time_binning
+
+        # Time since preceding conversion in microseconds
+        x_values = (self.e[event_indices] - self.e[event_indices - 1]) / 100.
+
+        y_values = self.a[event_indices, index].toarray().ravel()
+
+        # Only use conversions that are valid
+        valid = np.logical_and(y_values != 0, y_values != 32767)
+        x_values = x_values[valid]
+        y_values = y_values[valid]
+
+        # Automatically determine the vertical axis
+        y_median = np.median(y_values)
+        y_binning = np.arange(y_median - 300, y_median + 601, 10)
+
+        args = {'bins' : [x_binning, y_binning],
+                'cmap' : 'gray'}
+        args.update(hist2d_kwargs)
+        plt.hist2d(x_values, y_values, **args)
+
+        plt.xlabel("Time since preceding conversion (microseconds)")
+        plt.ylabel("ADC value")
+        plt.title("CC{0}/A{1}-{2}".format(self.detector, *divmod(index, 64)))
+
+        return plt.gca()
+
     def plot_depth(self, binning=np.arange(-595, 596, 10), **hist_kwargs):
         """Plot the depth-information plot, for only single-trigger events
         
