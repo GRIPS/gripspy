@@ -369,6 +369,64 @@ def pcsc2fc(buf, out):
     return out
 
 
+def cc_hkp(buf, out):
+    """Parse a card-cage counter packet (SystemID 0x8? and TmType 0x02)
+    """
+    if out['systemid'] & 0xF0 != 0x80 or out['tmtype'] != 0x02:
+        raise ValueError
+
+    index = INDEX_PAYLOAD
+
+    out['last_cmdtype'] = buf[index]
+    
+    out['daq_running'] = (buf[index + 1] & (1 << 7)) != 0
+    # seven more bits
+
+    out['mode_veto_shield_hard']        = (buf[index + 2] & (1 << 0)) != 0
+    out['mode_veto_guard_ring_lv_hard'] = (buf[index + 2] & (1 << 1)) != 0
+    out['mode_veto_guard_ring_hv_hard'] = (buf[index + 2] & (1 << 2)) != 0
+    out['mode_coincidence']             = (buf[index + 2] & (1 << 3)) != 0
+    out['mode_abort_ramp']              = (buf[index + 2] & (1 << 4)) != 0
+    out['mode_sample_last_edge']        = (buf[index + 2] & (1 << 5)) != 0
+    # two more bits
+
+    # one byte
+
+    out['period_housekeeping'] = buf[index + 4] * (1 << 24) # in 10-ns steps
+    out['period_counters'] = buf[index + 5] * (1 << 24) # in 10-ns steps
+
+    out['window_sample_lv']         = struct.unpack('<H', buf[index + 6   : index + 8  ])[0] * 20
+    out['window_trigger_wait']      = struct.unpack('<H', buf[index + 8   : index + 10 ])[0]
+    out['window_reset_adc']         = struct.unpack('<H', buf[index + 10  : index + 12 ])[0]
+    out['window_start_adc']         = struct.unpack('<H', buf[index + 12  : index + 14 ])[0]
+    out['window_full_ramp']         = struct.unpack('<H', buf[index + 14  : index + 16 ])[0]
+    out['window_coincidence']       = struct.unpack('<H', buf[index + 16  : index + 18 ])[0] * 10
+    out['window_mult_trig_collect'] = struct.unpack('<H', buf[index + 18  : index + 20 ])[0] * 20
+    out['window_mult_trig_veto']    = struct.unpack('<H', buf[index + 20  : index + 22 ])[0] * 10
+
+    # lots of bytes
+
+    out['window_sample_hv']         = struct.unpack('<H', buf[index + 99  : index + 101])[0] * 20
+
+    # lots of bytes
+
+    out['mode_veto_mult_trig_hard'] = (buf[index + 113] & (1 << 3)) != 0
+
+    # lots of bytes
+
+    out['time_since_last_reset'] = struct.unpack('<Q', buf[index + 120 : index + 126] + b'\0\0')[0] # in 10-ns steps
+
+    # lots of bytes
+
+    out['count_watchpup_reset'] = struct.unpack('<H', buf[index + 135 : index + 137])[0]
+
+    out['mult_trig_threshold'] = buf[index + 137]
+
+    # one byte
+
+    return out
+
+
 def cc_counter(buf, out):
     """Parse a card-cage counter packet (SystemID 0x8? and TmType 0x08)
     """
@@ -425,4 +483,5 @@ parser_registry[0x03][0x03] = pcsc2fc
 
 # Card-cage packets
 for systemid in range(0x80, 0x90):
+    parser_registry[systemid][0x02] = cc_hkp
     parser_registry[systemid][0x08] = cc_counter

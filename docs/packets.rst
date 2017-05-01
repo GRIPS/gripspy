@@ -31,7 +31,7 @@ full      0x05      0x02    GPS
 \         0x40      0x10    Aspect science
 \         0x4A      0x20    Aspect pitch-yaw image row
 \         0x4B      0x20    Aspect roll image row
-\         0x8?      0x02    Card cage (Ge) housekeeping
+partia    0x8?      0x02    Card cage (Ge) housekeeping
 \         0x8?      0x04    Card cage (Ge) ASIC registers, LV top
 \         0x8?      0x05    Card cage (Ge) ASIC registers, LV bottom
 \         0x8?      0x06    Card cage (Ge) ASIC registers, HV top
